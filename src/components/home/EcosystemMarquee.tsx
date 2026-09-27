@@ -15,6 +15,8 @@
  *
  * Artwork is never altered: only display height is normalized (width auto,
  * exact aspect ratios preserved), plus opacity for dark-theme integration.
+ * Heights are optically balanced per item (wide lockups render smaller, the
+ * icon-only Xendit mark larger) so every logo carries the same visual weight.
  * Track holds the sequence twice and translates exactly -50%: a seamless
  * endless loop. Hover pauses in place; reduced motion shows a stable row.
  */
@@ -26,25 +28,30 @@ interface Item {
   src?: string;
   width: number;
   height: number;
+  /** Display height in px — optically tuned per item, not uniform. */
+  h: number;
 }
 
+// Wordmark size for the text-only items (Xendit, Rupiah), matched to the
+// average cap-height of the SVG lockups above.
+const WORDMARK_SIZE = 18;
+
 const ITEMS: Item[] = [
-  { id: 'xendit', label: 'Xendit', href: 'https://www.xendit.co/', src: '/logos/xendit.png', width: 72, height: 100 },
-  { id: 'blockchain', label: 'Blockchain.com', href: 'https://www.blockchain.com/', src: '/logos/blockchaincom.svg', width: 432, height: 48 },
-  { id: 'solana', label: 'Solana', href: 'https://solana.com/', src: '/logos/solana.svg', width: 646, height: 96 },
-  { id: 'base', label: 'Base', href: 'https://www.base.org/', src: '/logos/base.svg', width: 1280, height: 324 },
-  { id: 'bnb', label: 'BNB Chain', href: 'https://www.bnbchain.org/', src: '/logos/bnbchain.svg', width: 137, height: 24 },
-  { id: 'idr', label: 'Indonesian Rupiah', href: null, width: 0, height: 0 },
+  { id: 'xendit', label: 'Xendit', href: 'https://www.xendit.co/', src: '/logos/xendit.png', width: 72, height: 100, h: 30 },
+  { id: 'blockchain', label: 'Blockchain.com', href: 'https://www.blockchain.com/', src: '/logos/blockchaincom.svg', width: 432, height: 48, h: 22 },
+  { id: 'solana', label: 'Solana', href: 'https://solana.com/', src: '/logos/solana.svg', width: 646, height: 96, h: 24 },
+  { id: 'base', label: 'Base', href: 'https://www.base.org/', src: '/logos/base.svg', width: 1280, height: 324, h: 26 },
+  { id: 'bnb', label: 'BNB Chain', href: 'https://www.bnbchain.org/', src: '/logos/bnbchain.svg', width: 137, height: 24, h: 24 },
+  { id: 'idr', label: 'Indonesian Rupiah', href: null, width: 0, height: 0, h: 30 },
 ];
 
-function LogoItem({ id, label, href, src, width, height }: Item) {
+function LogoItem({ id, label, href, src, width, height, h }: Item) {
   // Intrinsic-width flex item: the whole mark + gap + wordmark must reserve
   // its own width. Nothing here may shrink, clip, or collapse.
   const cls =
     'ecosystem-logo flex items-center gap-2.5 sm:gap-3 shrink-0 min-w-max opacity-75 transition-all duration-200 hover:opacity-100 hover:scale-[1.04] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B78F]/60 rounded-lg px-1';
-  // Normalized visual height (~28px, BNB slightly smaller to balance its
-  // compact lockup); width follows the official aspect ratio exactly.
-  const h = id === 'bnb' ? 24 : 28;
+  // Per-item optically balanced height; width follows the official aspect
+  // ratio exactly.
   const w = src ? Math.round((width / height) * h) : 0;
   const inner = (
     <>
@@ -61,8 +68,8 @@ function LogoItem({ id, label, href, src, width, height }: Item) {
           style={{
             color: '#CFCFD4',
             opacity: 1,
-            fontSize: 15,
-            lineHeight: '20px',
+            fontSize: WORDMARK_SIZE,
+            lineHeight: '22px',
             fontWeight: 600,
             letterSpacing: '-0.01em',
             whiteSpace: 'nowrap',
