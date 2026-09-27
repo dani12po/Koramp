@@ -6,8 +6,9 @@
  *
  * Cache strategy:
  *  - In-memory cache with 60s TTL (per-process, resets on cold start)
- *  - Single-flight: concurrent requests share one CoinGecko fetch
- *  - On fetch failure: admin manual price → stale cache (max 5 min) → throw
+ *  - Single-flight: concurrent requests share one upstream fetch
+ *  - Upstreams: CoinGecko first, CoinPaprika second (independent rate limits)
+ *  - On all upstream failures: admin manual price → stale cache (max 5 min) → throw
  *  - Hardcoded fallback ONLY if MARKETPLACE_EMERGENCY_HARDCODED_PRICE=true
  *
  * NEVER use floating point for financial math — all values returned as Decimal strings.
@@ -63,6 +64,39 @@ let cgBackoffUntil = 0;
 const CG_BACKOFF_MS = 45_000; // 45 seconds
 let cgFailLoggedUntil = 0;
 const CG_FAIL_LOG_COOLDOWN_MS = 5 * 60 * 1000; // log failures at most every 5 min
+
+// ─── Second upstream: CoinPaprika (keyless, independent rate limits) ───────
+// When CoinGecko 429s/blocks shared serverless egress IPs, Paprika keeps
+// quotes flowing. Same IDR semantics, same Decimal handling.
+const COINPAPRIKA_IDS: Record<AssetSymbol, string> = {
+  SOL: 'sol-solana',
+  ETH: 'eth-ethereum',
+  BNB: 'bnb-binance-coin',
+};
+
+let inFlightPaprika: Promise<Partial<Record<AssetSymbol, Decimal>>> | null = null;
+let ppBackoffUntil = 0;
+const PP_BACKOFF_MS = 45_000; // 45 seconds
+
+async function fetchFromCoinPaprika(): Promise<Partial<Record<AssetSymbol, Decimal>>> {
+  const entries = await Promise.all(
+    (Object.entries(COINPAPRIKA_IDS) as [AssetSymbol, string][]).map(
+      async ([asset, id]) => {
+        const res = await fetch(`https://api.coinpaprika.com/v1/tickers/${id}?quotes=IDR`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(5000), // 5s timeout
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`CoinPaprika HTTP ${res.status} for ${asset}`);
+        const data = (await res.json()) as { quotes?: { IDR?: { price?: number } } };
+        const price = data?.quotes?.IDR?.price;
+        if (!price || price <= 0) throw new Error(`CoinPaprika no IDR price for ${asset}`);
+        return [asset, new Decimal(price)] as const;
+      },
+    ),
+  );
+  return Object.fromEntries(entries);
+}
 
 function allowHardcodedFallback(): boolean {
   return process.env.MARKETPLACE_EMERGENCY_HARDCODED_PRICE === 'true';
@@ -269,8 +303,32 @@ export async function getLivePrice(
       cgBackoffUntil = Date.now() + CG_BACKOFF_MS;
       if (Date.now() >= cgFailLoggedUntil) {
         cgFailLoggedUntil = Date.now() + CG_FAIL_LOG_COOLDOWN_MS;
-        console.warn(`[marketPrice] CoinGecko fetch failed: ${err instanceof Error ? err.message : err} — backing off ${CG_BACKOFF_MS / 1000}s, serving manual/stale`);
+        console.warn(`[marketPrice] CoinGecko fetch failed: ${err instanceof Error ? err.message : err} — backing off ${CG_BACKOFF_MS / 1000}s, trying CoinPaprika`);
       }
+    }
+  }
+
+  // 2b. Second upstream: CoinPaprika (independent of CoinGecko rate limits).
+  // Same cache semantics — a Paprika success refreshes all three assets.
+  if (Date.now() >= ppBackoffUntil) {
+    try {
+      if (!inFlightPaprika) {
+        inFlightPaprika = fetchFromCoinPaprika().finally(() => {
+          inFlightPaprika = null;
+        });
+      }
+      const prices = await inFlightPaprika;
+      const fetchedAt = Date.now();
+
+      for (const [sym, price] of Object.entries(prices) as [AssetSymbol, Decimal][]) {
+        priceCache.set(sym, { priceIdr: price, fetchedAt });
+      }
+
+      const fresh = priceCache.get(asset);
+      if (fresh) return fresh.priceIdr;
+    } catch (err) {
+      ppBackoffUntil = Date.now() + PP_BACKOFF_MS;
+      console.warn(`[marketPrice] CoinPaprika fetch failed: ${err instanceof Error ? err.message : err} — backing off ${PP_BACKOFF_MS / 1000}s, serving manual/stale`);
     }
   }
 
