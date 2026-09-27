@@ -188,8 +188,12 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   // DEV/STAGING GUARD: in production, block connections to a devnet endpoint.
   // Refuse to render the wallet layer rather than risk users signing devnet
   // transactions thinking they are on mainnet.
+  // Sandbox escape hatch: NEXT_PUBLIC_ALLOW_TESTNET_IN_PROD=true explicitly
+  // permits testnet wallets on a production build (Vercel sandbox testing).
+  // Never enable with mainnet funds.
+  const allowTestnetInProd = process.env.NEXT_PUBLIC_ALLOW_TESTNET_IN_PROD === 'true';
   useEffect(() => {
-    if (isProd && solanaPublicRpc.includes('devnet')) {
+    if (isProd && !allowTestnetInProd && solanaPublicRpc.includes('devnet')) {
       // eslint-disable-next-line no-console
       console.error(
         '[wallet] FATAL: NEXT_PUBLIC_SOLANA_RPC_URL points at devnet in production. ' +
@@ -198,7 +202,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  if (isProd && solanaPublicRpc.includes('devnet')) {
+  if (isProd && !allowTestnetInProd && solanaPublicRpc.includes('devnet')) {
     // FATAL config error: production points at devnet. Render a static
     // notice WITHOUT any wallet providers or children — hooks like
     // useAccount/useWallet would throw outside their providers
