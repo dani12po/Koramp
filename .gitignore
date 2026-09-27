@@ -49,3 +49,11 @@ scripts/
 
 # Zip archives
 *.zip
+
+# Local build output / agent state (never commit)
+.open-next/
+.wrangler/
+.dev.vars
+.kiro/
+.opencode/
+.opencode.jsonc
