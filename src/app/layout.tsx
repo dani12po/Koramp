@@ -11,7 +11,7 @@ import { ClientErrorFilter } from '@/components/ui/ClientErrorFilter';
 // Route groups (public)/(admin) preserve public URLs while splitting bundles.
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL((process.env.NEXT_PUBLIC_APP_URL ?? '').trim() || 'http://localhost:3000'),
   title: 'KORAMP: Top Up & Sell Crypto with IDR',
   description: 'Beli SOL, ETH, BNB dengan Rupiah atau jual crypto dan terima IDR langsung ke rekening bank. Cukup hubungkan wallet, tanpa daftar akun.',
   keywords: 'beli crypto IDR, jual crypto rupiah, top up SOL ETH BNB, koramp, kripto Indonesia',
