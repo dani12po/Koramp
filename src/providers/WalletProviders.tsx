@@ -74,6 +74,12 @@ const queryClient = new QueryClient({
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// Sandbox escape hatch (module scope so the startup log below reflects the
+// exact baked value): NEXT_PUBLIC_ALLOW_TESTNET_IN_PROD=true explicitly
+// permits testnet wallets on a production build. Never enable with mainnet.
+const allowTestnetInProd =
+  (process.env.NEXT_PUBLIC_ALLOW_TESTNET_IN_PROD ?? '').trim().toLowerCase() === 'true';
+
 /**
  * Resolve a public RPC URL for the browser.
  * Custom RPC first, documented high-rate-limit default second, with a loud
@@ -123,6 +129,7 @@ if (typeof window !== 'undefined') {
   console.info(
     '[wallet] RPC endpoints → ' +
       `Base: ${basePublicRpc} | BSC: ${bscPublicRpc} | Solana: ${solanaPublicRpc}` +
+      ` | AllowTestnetInProd: ${allowTestnetInProd}` +
       (wcProjectId ? '' : ' | WalletConnect: NOT CONFIGURED'),
   );
 }
@@ -191,7 +198,6 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   // Sandbox escape hatch: NEXT_PUBLIC_ALLOW_TESTNET_IN_PROD=true explicitly
   // permits testnet wallets on a production build (Vercel sandbox testing).
   // Never enable with mainnet funds.
-  const allowTestnetInProd = process.env.NEXT_PUBLIC_ALLOW_TESTNET_IN_PROD === 'true';
   useEffect(() => {
     if (isProd && !allowTestnetInProd && solanaPublicRpc.includes('devnet')) {
       // eslint-disable-next-line no-console
