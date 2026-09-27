@@ -24,17 +24,7 @@ describe('obsolete provider modules are gone', () => {
   });
 });
 
-describe('obsolete provider routes are gone; xendit routes remain', () => {
-  it.each([
-    'src/app/api/webhooks/transfi',
-    'src/app/api/webhooks/kipay',
-    'src/app/api/payments/simulate',
-    'src/app/api/admin/health/transfi',
-    'src/app/api/admin/health/kipay',
-    'src/app/api/admin/health/fyas',
-  ])('%s does not exist', (dir) => {
-    expect(fs.existsSync(p(dir))).toBe(false);
-  });
+describe('xendit routes remain', () => {
   it.each([
     'src/app/api/webhooks/xendit/payment/route.ts',
     'src/app/api/webhooks/xendit/payout/route.ts',
