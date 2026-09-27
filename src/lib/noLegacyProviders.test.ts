@@ -75,12 +75,10 @@ describe('no obsolete gateway env vars in config', () => {
       expect(content.includes(token)).toBe(false);
     }
   });
-  it('vercel.json keeps the xendit + cron configuration', () => {
+  it('vercel.json defines no crons and no secret refs (external cron + dashboard env)', () => {
     const v = JSON.parse(read('vercel.json'));
-    expect(v.env.XENDIT_API_KEY).toBeDefined();
-    expect(v.env.XENDIT_WEBHOOK_TOKEN).toBeDefined();
-    expect(v.env.XENDIT_MODE).toBeDefined();
-    expect(JSON.stringify(v.crons)).toContain('reconcile');
+    expect(v.crons).toBeUndefined();
+    expect(JSON.stringify(v)).not.toMatch(/TRANSFI_|FYAS_|KIPAY_|@kipramp_/);
   });
 });
 
