@@ -6,6 +6,7 @@ node_modules/
 .env.local
 .env.production
 .env.*.local
+neon.txt
 
 # Next.js
 .next/
@@ -57,3 +58,9 @@ scripts/
 .kiro/
 .opencode/
 .opencode.jsonc
+
+# Firecrawl local audit artifacts
+.firecrawl/
+
+# Docs subdirectory — repo terpisah, jangan ikut push ke repo utama
+docs/
