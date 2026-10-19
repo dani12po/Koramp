@@ -9,14 +9,13 @@
  * - Base: white lockup SVG from the official Base brand kit (brand.base.org)
  * - BNB Chain: lockup SVG from official BNB Chain docs (docs.bnbchain.org)
  * - Blockchain.com: lockup SVG from Blockchain.com's own GitHub repo
- * - Xendit: X-mark PNG from the official Xendit GitHub org avatar
- *   (white keyed out for dark-theme integration, aspect preserved)
+ * - MoonPay: neutral "M" badge + wordmark (text-only, no brand asset)
  * - IDR: neutral "Rp" currency badge (not a company logo)
  *
  * Artwork is never altered: only display height is normalized (width auto,
  * exact aspect ratios preserved), plus opacity for dark-theme integration.
- * Heights are optically balanced per item (wide lockups render smaller, the
- * icon-only Xendit mark larger) so every logo carries the same visual weight.
+ * All items share one uniform display height so every logo carries the
+ * same visual weight.
  * Track holds the sequence twice and translates exactly -50%: a seamless
  * endless loop. Hover pauses in place; reduced motion shows a stable row.
  */
@@ -28,21 +27,21 @@ interface Item {
   src?: string;
   width: number;
   height: number;
-  /** Display height in px — optically tuned per item, not uniform. */
+  /** Display height in px — uniform for all items so icons render sama besar. */
   h: number;
 }
 
-// Wordmark size for the text-only items (Xendit, Rupiah), matched to the
-// average cap-height of the SVG lockups above.
-const WORDMARK_SIZE = 18;
+// Wordmark size for the text-only items (MoonPay, Rupiah), matched to the
+// uniform logo height below.
+const WORDMARK_SIZE = 34;
 
 const ITEMS: Item[] = [
-  { id: 'xendit', label: 'Xendit', href: 'https://www.xendit.co/', src: '/logos/xendit.png', width: 72, height: 100, h: 30 },
-  { id: 'blockchain', label: 'Blockchain.com', href: 'https://www.blockchain.com/', src: '/logos/blockchaincom.svg', width: 432, height: 48, h: 22 },
-  { id: 'solana', label: 'Solana', href: 'https://solana.com/', src: '/logos/solana.svg', width: 646, height: 96, h: 24 },
-  { id: 'base', label: 'Base', href: 'https://www.base.org/', src: '/logos/base.svg', width: 1280, height: 324, h: 26 },
-  { id: 'bnb', label: 'BNB Chain', href: 'https://www.bnbchain.org/', src: '/logos/bnbchain.svg', width: 137, height: 24, h: 24 },
-  { id: 'idr', label: 'Indonesian Rupiah', href: null, width: 0, height: 0, h: 30 },
+  { id: 'moonpay', label: 'MoonPay', href: 'https://www.moonpay.com', width: 0, height: 0, h: 72 },
+  { id: 'blockchain', label: 'Blockchain.com', href: 'https://www.blockchain.com/', src: '/logos/blockchaincom.svg', width: 432, height: 48, h: 72 },
+  { id: 'solana', label: 'Solana', href: 'https://solana.com/', src: '/logos/solana.svg', width: 646, height: 96, h: 72 },
+  { id: 'base', label: 'Base', href: 'https://www.base.org/', src: '/logos/base.svg', width: 1280, height: 324, h: 72 },
+  { id: 'bnb', label: 'BNB Chain', href: 'https://www.bnbchain.org/', src: '/logos/bnbchain.svg', width: 137, height: 24, h: 72 },
+  { id: 'idr', label: 'Indonesian Rupiah', href: null, width: 0, height: 0, h: 72 },
 ];
 
 function LogoItem({ id, label, href, src, width, height, h }: Item) {
@@ -59,17 +58,17 @@ function LogoItem({ id, label, href, src, width, height, h }: Item) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" aria-hidden width={w} height={h} style={{ height: h, width: 'auto', flexShrink: 0 }} draggable={false} />
       ) : (
-        <span aria-hidden className="flex items-center justify-center rounded-full border border-[#D4B78F]/50 bg-[#D4B78F]/10 text-[#D4B78F] text-xs sm:text-sm font-bold" style={{ height: h, width: h, flexShrink: 0 }}>
-          {id === 'xendit' ? 'X' : 'Rp'}
+        <span aria-hidden className="flex items-center justify-center rounded-full border border-[#D4B78F]/50 bg-[#D4B78F]/10 text-[#D4B78F] text-xl font-bold" style={{ height: h, width: h, flexShrink: 0, fontSize: 22 }}>
+          {id === 'moonpay' ? 'M' : 'Rp'}
         </span>
       )}
-      {(id === 'idr' || id === 'xendit') && (
+      {(id === 'idr' || id === 'moonpay') && (
         <span
           style={{
             color: '#CFCFD4',
             opacity: 1,
             fontSize: WORDMARK_SIZE,
-            lineHeight: '22px',
+            lineHeight: '40px',
             fontWeight: 600,
             letterSpacing: '-0.01em',
             whiteSpace: 'nowrap',
@@ -78,7 +77,7 @@ function LogoItem({ id, label, href, src, width, height, h }: Item) {
             maxWidth: 'none',
           }}
         >
-          {id === 'idr' ? 'Rupiah' : 'Xendit'}
+          {id === 'idr' ? 'Rupiah' : 'MoonPay'}
         </span>
       )}
     </>

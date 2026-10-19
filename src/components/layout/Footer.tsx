@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { QrCode } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { TokenIcon } from '@/components/ui/TokenIcon';
 
 export function Footer() {
@@ -18,10 +18,15 @@ export function Footer() {
               Hubungkan wallet, tanpa daftar akun.
             </p>
             <p className="text-[#5A5A60] text-xs mt-3">SOL · ETH (Base) · BNB</p>
-            <span className="inline-flex items-center gap-1.5 mt-4 px-3 py-1.5 rounded-full text-xs font-semibold text-[#D4B78F] border border-[#D4B78F]/40 bg-transparent">
-              <QrCode className="w-3 h-3" aria-hidden />
-              QRIS payment
-            </span>
+            <a
+              href="https://www.moonpay.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-4 px-3 py-1.5 rounded-full text-xs font-semibold text-[#D4B78F] border border-[#D4B78F]/40 bg-transparent hover:bg-[#D4B78F]/10 transition-colors"
+            >
+              <CreditCard className="w-3 h-3" aria-hidden />
+              MoonPay
+            </a>
           </div>
           <div>
             <p className="text-[#F5F5F5] font-semibold text-sm mb-3">Produk</p>

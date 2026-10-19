@@ -4,40 +4,16 @@ import { BottomCta } from '@/components/home/HomeCta';
 import { WhyCards } from '@/components/home/WhyCards';
 import { EcosystemMarquee } from '@/components/home/EcosystemMarquee';
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/motion';
+import { RailsAccordion } from '@/components/home/RailsAccordion';
 import { ScrollVideo } from '@/components/3d/ScrollVideo';
 import { SplitSection } from '@/components/3d/SplitSection';
 import {
-  ArrowDownLeft, Check,
-  Wallet, QrCode, ArrowRightLeft,
+  Check, Wallet, ArrowRight,
 } from 'lucide-react';
+import Link from 'next/link';
 
 // KORAMP landing — struktur adaptasi Normies, branding & rails IDR milik KORAMP.
 // Luxury system: bg #08080A, card #141416 / #232326, gold #D4B78F, green #22C55E.
-
-const RAILS = [
-  {
-    n: '01',
-    title: 'Kumpulkan',
-    desc: 'Terima pembayaran IDR via QRIS dan settle ke crypto: SOL, ETH, BNB. Quote dikunci di awal, tidak berubah sepihak.',
-    icon: QrCode,
-  },
-  {
-    n: '02',
-    title: 'Cairkan',
-    desc: 'Kirim crypto ke alamat deposit, terima IDR ke rekening bank lokal: BCA, BRI, BNI, Mandiri, dan lainnya. Cepat dan always-on.',
-    icon: ArrowDownLeft,
-  },
-  {
-    n: '03',
-    title: 'Otomatiskan',
-    desc: 'Routing quote, likuiditas, dan verifikasi server-ke-server berjalan otomatis. Kamu cukup hubungkan wallet.',
-    icon: RefreshCwIcon,
-  },
-];
-
-function RefreshCwIcon(props: { className?: string }) {
-  return <ArrowRightLeft {...props} aria-hidden />;
-}
 
 const SEGMENTS = [
   {
@@ -102,7 +78,7 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 ledger-grid pointer-events-none" aria-hidden />
 
-        <div className="relative max-w-[900px] mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-16 sm:pb-24 text-center flex flex-col items-center justify-center">
+        <div className="relative max-w-[900px] mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-16 sm:pb-24 text-center flex flex-col items-center justify-center min-h-[60vh]">
           <p className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#D4B78F]/40 text-xs font-semibold tracking-wide text-[#D4B78F] mb-5">
             ON/OFF-RAMP IDR <span aria-hidden>⇄</span> CRYPTO GLOBAL
           </p>
@@ -124,6 +100,15 @@ export default function HomePage() {
               </li>
             ))}
           </ul>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link href="/topup-sell" className="inline-flex items-center gap-2 rounded-xl bg-[#D4B78F] px-6 py-3 text-sm font-semibold text-[#08080A] transition-colors hover:bg-[#E2C9A5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B78F]/60">
+              Mulai Sekarang
+              <ArrowRight className="w-4 h-4" aria-hidden />
+            </Link>
+            <Link href="#how-it-works" className="inline-flex items-center gap-2 rounded-xl border border-[#D4B78F]/30 px-6 py-3 text-sm font-medium text-[#CFCFD4] transition-colors hover:border-[#D4B78F]/60 hover:text-[#F5F5F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4B78F]/60">
+              Cara Kerja
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -134,10 +119,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── 3. MODERN RAILS untuk settlement IDR ── + ScrollVideo (visual kanan) */}
+      {/* ── 3. MODERN RAILS untuk settlement IDR ── + ScrollVideo (visual atas) */}
       <SplitSection
         eyebrow="Rails modern"
-        pin
+        stacked
         title="Rails modern untuk settlement IDR"
         desc="Satu cara terpadu memindahkan uang antar pasar, dengan kecepatan, presisi, dan skala."
         visual={
@@ -149,22 +134,7 @@ export default function HomePage() {
           />
         }
       >
-        <Stagger className="flex flex-col" gap={0.08}>
-          {RAILS.map((r) => (
-            <StaggerItem key={r.n}>
-              <div className="flex gap-4 py-5 border-t border-[#232326] first:border-t-0 first:pt-0">
-                <span className="tnum text-[#8B8B93] text-sm pt-0.5 w-7 flex-shrink-0">{r.n}</span>
-                <div className="w-10 h-10 rounded-xl bg-[#D4B78F]/10 border border-[#D4B78F]/25 flex items-center justify-center flex-shrink-0">
-                  <r.icon className="w-5 h-5 text-[#D4B78F]" aria-hidden />
-                </div>
-                <div>
-                  <h3 className="text-[#F5F5F5] font-semibold text-lg tracking-[-0.02em] mb-1">{r.title}</h3>
-                  <p className="text-[#8B8B93] text-sm leading-relaxed">{r.desc}</p>
-                </div>
-              </div>
-            </StaggerItem>
-          ))}
-        </Stagger>
+        <RailsAccordion />
       </SplitSection>
 
       {/* ── 3. WHY KORAMP (stacked cards pin) ─────────────────────── */}
@@ -242,7 +212,7 @@ export default function HomePage() {
       <section className="py-12 sm:py-16 px-4 sm:px-6">
         <div className="max-w-[1200px] mx-auto">
           <Reveal className="bg-[#141416] border border-[#232326] rounded-xl p-6 sm:p-10" >
-            <p className="text-[#8B8B93] text-sm mb-8 text-center">Infrastruktur yang membuat kasmu terus bergerak</p>
+            <p className="text-[#8B8B93] text-sm mb-8 text-center">Dipercaya pengguna KORAMP</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
               {STATS.map((s) => (
                 <div key={s.label}>
