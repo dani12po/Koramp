@@ -5,7 +5,10 @@ import { WhyCards } from '@/components/home/WhyCards';
 import { EcosystemMarquee } from '@/components/home/EcosystemMarquee';
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/motion';
 import { RailsAccordion } from '@/components/home/RailsAccordion';
-import { ScrollVideo } from '@/components/3d/ScrollVideo';
+import { KorampFlow } from '@/components/home/KorampFlow';
+import { EcosystemIllustration } from '@/components/home/EcosystemIllustration';
+import { FlowIllustration } from '@/components/home/FlowIllustration';
+import { RotatingCurrency } from '@/components/home/RotatingCurrency';
 import { SplitSection } from '@/components/3d/SplitSection';
 import {
   Check, Wallet, ArrowRight,
@@ -84,7 +87,8 @@ export default function HomePage() {
           </p>
 
           <h1 className="font-bold text-[#F5F5F5] text-[clamp(42px,6vw,72px)] leading-[1.08] tracking-[-0.02em] mb-6">
-            Terima crypto global, settle <span className="font-bold text-[#D4B78F]">Rupiah</span> instan
+            Terima crypto global, settle{' '}
+            <RotatingCurrency className="font-bold text-[#D4B78F]" /> instan
           </h1>
 
           <p className="text-[#CFCFD4] text-sm leading-relaxed mb-8 max-w-[700px] mx-auto">
@@ -109,50 +113,32 @@ export default function HomePage() {
               Cara Kerja
             </Link>
           </div>
+          <div className="mt-10">
+            <EcosystemMarquee />
+          </div>
         </div>
       </section>
 
-      {/* ── 2. ECOSYSTEM MARQUEE (fills the strip below hero) ─────────── */}
-      <section className="px-4 sm:px-6 py-8 sm:py-10" aria-label="Ekosistem KORAMP">
-        <div className="max-w-[1200px] mx-auto">
-          <EcosystemMarquee />
-        </div>
-      </section>
-
-      {/* ── 3. MODERN RAILS untuk settlement IDR ── + ScrollVideo (visual atas) */}
+      {/* ── 3. MODERN RAILS untuk settlement IDR ── + ilustrasi alur (visual atas) */}
       <SplitSection
         eyebrow="Rails modern"
         stacked
         title="Rails modern untuk settlement IDR"
         desc="Satu cara terpadu memindahkan uang antar pasar, dengan kecepatan, presisi, dan skala."
-        visual={
-          <ScrollVideo
-            src="/videos/rails-hub.mp4"
-            srcRev="/videos/rails-hub-rev.mp4"
-            poster="/videos/rails-hub-poster.jpg"
-            label="Video hub KORAMP: globe, koin crypto, bank IDR, dan wallet, bergerak mengikuti scroll"
-          />
-        }
+        visual={<KorampFlow />}
       >
         <RailsAccordion />
       </SplitSection>
 
       {/* ── 3. WHY KORAMP (stacked cards pin) ─────────────────────── */}
       <WhyCards />
-      {/* ── 4. BUILT FOR Indonesians that move money ── + ScrollVideo (visual kiri) */}
+      {/* ── 4. BUILT FOR Indonesians that move money ── + ilustrasi ekosistem (visual kiri) */}
       <SplitSection
         eyebrow="Untuk siapa"
         title="Dibangun untuk Indonesia yang menggerakkan uang"
         desc="Terima crypto global, settle instan dalam IDR, dan upgrade pengalaman pembayaranmu — dengan satu loket sederhana."
         reverse
-        visual={
-          <ScrollVideo
-            src="/videos/segments-global.mp4"
-            srcRev="/videos/segments-global-rev.mp4"
-            poster="/videos/segments-global-poster.jpg"
-            label="Video metode pembayaran global mengelilingi globe, bergerak mengikuti scroll"
-          />
-        }
+        visual={<EcosystemIllustration />}
       >
         <Stagger className="flex flex-col" gap={0.08}>
           {SEGMENTS.map((s) => (
@@ -169,21 +155,14 @@ export default function HomePage() {
         </Stagger>
       </SplitSection>
 
-      {/* ── 5. SIMPLE-FIRST (adaptasi developer-first) ── + ScrollVideo (visual kanan) */}
+      {/* ── 5. SIMPLE-FIRST (adaptasi developer-first) ── + ilustrasi alur (visual kanan) */}
       <SplitSection
         id="how-it-works"
         pin
         eyebrow="Simple-first"
         title={<>Simple-first,<br />dari fondasinya</>}
         desc="Wallet-mu adalah identitasmu. Tanpa email, tanpa password. Quote transparan, verifikasi otomatis, payout ke bank, siap produksi dari hari pertama."
-        visual={
-          <ScrollVideo
-            src="/videos/simple-hub.mp4"
-            srcRev="/videos/simple-hub-rev.mp4"
-            poster="/videos/simple-hub-poster.jpg"
-            label="Video podium dengan peta dunia di latar, bergerak mengikuti scroll"
-          />
-        }
+        visual={<FlowIllustration />}
       >
         <div className="flex flex-col gap-6">
           <div className="bg-[#141416] border border-[#232326] rounded-xl p-6 flex flex-col justify-center" style={{ backdropFilter: 'blur(12px)' }}>
@@ -212,7 +191,7 @@ export default function HomePage() {
       <section className="py-12 sm:py-16 px-4 sm:px-6">
         <div className="max-w-[1200px] mx-auto">
           <Reveal className="bg-[#141416] border border-[#232326] rounded-xl p-6 sm:p-10" >
-            <p className="text-[#8B8B93] text-sm mb-8 text-center">Dipercaya pengguna KORAMP</p>
+            <p className="text-[#8B8B93] text-sm mb-8 text-center">Infrastruktur yang membuat kasmu terus bergerak</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
               {STATS.map((s) => (
                 <div key={s.label}>
