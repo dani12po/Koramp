@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { WalletSidebarButton } from '@/components/wallet/WalletSidebar';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 
@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: '/topup-sell', label: 'Top Up/Sell' },
   { href: '/transactions', label: 'Transactions' },
   { href: '/#how-it-works', label: 'Cara Kerja' },
+  { href: 'https://docs.koramp.xyz/', label: 'Docs', external: true },
 ];
 
 export function Navbar() {
@@ -49,21 +50,39 @@ export function Navbar() {
           {/* TENGAH: nav — center viewport absolut, independen dari
               lebar logo/wallet */}
           <div className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
-            {NAV_LINKS.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                data-active={pathname === link.href}
-                className={clsx(
-                  'nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap',
-                  pathname === link.href
-                    ? 'bg-[#D4B78F]/10 text-[#D4B78F]'
-                    : 'text-[#8B8B93] hover:text-white hover:bg-white/5'
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {NAV_LINKS.map(link => {
+              const isActive = !link.external && pathname === link.href;
+              const cls = clsx(
+                'nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 whitespace-nowrap inline-flex items-center gap-1',
+                isActive
+                  ? 'bg-[#D4B78F]/10 text-[#D4B78F]'
+                  : 'text-[#8B8B93] hover:text-white hover:bg-white/5'
+              );
+              if (link.external) {
+                return (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cls}
+                  >
+                    {link.label}
+                    <ExternalLink className="w-3 h-3 opacity-60" aria-hidden />
+                  </a>
+                );
+              }
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  data-active={isActive}
+                  className={cls}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           {/* KANAN: wallet — 24px dari kanan viewport */}
@@ -83,19 +102,38 @@ export function Navbar() {
         {/* Mobile menu — link navigasi saja, wallet sudah ada di bar */}
         {mobileOpen && (
           <div className="md:hidden border-t border-[#232326] py-3 space-y-1 pb-4 animate-fade-in">
-            {NAV_LINKS.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={clsx(
-                  'block px-4 py-2.5 rounded-lg text-sm font-medium',
-                  pathname === link.href ? 'bg-[#D4B78F]/10 text-[#D4B78F]' : 'text-gray-400 hover:text-white hover:bg-white/5'
-                )}
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {NAV_LINKS.map(link => {
+              const isActive = !link.external && pathname === link.href;
+              const cls = clsx(
+                'flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-medium',
+                isActive ? 'bg-[#D4B78F]/10 text-[#D4B78F]' : 'text-gray-400 hover:text-white hover:bg-white/5'
+              );
+              if (link.external) {
+                return (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cls}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {link.label}
+                    <ExternalLink className="w-3 h-3 opacity-60" aria-hidden />
+                  </a>
+                );
+              }
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cls}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
