@@ -7,7 +7,7 @@ import { ArrowDownLeft, ArrowRightLeft, ChevronDown, CreditCard } from 'lucide-r
 const ITEMS = [
   {
     title: 'Kumpulkan',
-    desc: 'Terima pembayaran IDR via MoonPay dan settle ke crypto: SOL, ETH, BNB. Quote dikunci di awal, tidak berubah sepihak.',
+    desc: 'Terima pembayaran IDR via QRIS dan settle ke crypto: SOL, ETH, BNB. Quote dikunci di awal, tidak berubah sepihak.',
     icon: CreditCard,
   },
   {

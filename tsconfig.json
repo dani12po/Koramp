@@ -20,5 +20,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/types/**/*.d.ts", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "apps", "docs"]
+  "exclude": ["node_modules", "apps", "docs", "koramp-assets", "koramp-source"]
 }

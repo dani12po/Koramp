@@ -2,9 +2,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Dev: SQLite  |  Prod (Vercel): PostgreSQL
+// Dev: PostgreSQL (Neon) — also used for local dev via .env
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

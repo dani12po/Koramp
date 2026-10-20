@@ -27,6 +27,8 @@ interface SplitSectionProps {
   children: ReactNode;
   /** true = visual kiri di >=lg (scene 2). false = visual kanan (scene 1 & 3). */
   reverse?: boolean;
+  /** true = susun vertikal: visual di atas (full-width), konten di bawah. */
+  stacked?: boolean;
   /**
    * true = pinned scrollytelling (desktop): section jadi track tinggi,
    * konten sticky 1 viewport — scroll tertahan sampai scrub video selesai.
@@ -36,7 +38,7 @@ interface SplitSectionProps {
 }
 
 /** Side-by-side: header penuh di atas, lalu grid visual + teks. Mobile: header -> visual -> konten. */
-export function SplitSection({ id, eyebrow, title, desc, visual, children, reverse, pin }: SplitSectionProps) {
+export function SplitSection({ id, eyebrow, title, desc, visual, children, reverse, pin, stacked }: SplitSectionProps) {
   const header = (
     <Fade className="mb-8 max-w-2xl">
       <p className="text-[#D4B78F] text-xs font-semibold uppercase tracking-[0.05em] mb-3">{eyebrow}</p>
@@ -44,7 +46,14 @@ export function SplitSection({ id, eyebrow, title, desc, visual, children, rever
       {desc ? <p className="text-[#8B8B93] text-sm leading-relaxed">{desc}</p> : null}
     </Fade>
   );
-  const grid = (
+  const grid = stacked ? (
+    <div className="flex flex-col gap-8 lg:gap-10">
+      <Fade>
+        <div>{visual}</div>
+      </Fade>
+      <div className="max-w-3xl">{children}</div>
+    </div>
+  ) : (
     <div className="grid gap-8 lg:gap-12 lg:grid-cols-[5fr_6fr] items-center">
       <Fade className={reverse ? 'lg:order-1' : 'lg:order-2'}>
         <div>{visual}</div>

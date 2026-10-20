@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Manrope:wght@400;600;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -43,6 +43,13 @@
   --ease-out:    cubic-bezier(0.0, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* KORAMP illustrations (ported from koramp-source) */
+  --gold: #D4B78F;
+  --green: #22C55E;
+  --ink: #141416;
+  --font-display: 'Inter', 'Geist', system-ui, sans-serif;
+  --muted-foreground: #8B8B93;
 }
 
 @layer base {
@@ -392,3 +399,101 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── KORAMP Flow — animasi alur transaksi (Wallet → crypto → QRIS → Bank → IDR)
+   Warna memakai variabel --kr-* agar mudah diganti tema. */
+:root {
+  --kr-bg: oklch(0.145 0.004 285);
+  --kr-panel: oklch(0.18 0.005 285);
+  --kr-grid: oklch(0.2 0.004 285);
+  --kr-gold: oklch(0.8 0.06 75);
+  --kr-gold-hi: oklch(0.92 0.045 80);
+  --kr-gold-lo: oklch(0.58 0.06 65);
+  --kr-green: oklch(0.72 0.19 150);
+  --kr-sol: oklch(0.78 0.12 175);
+  --kr-eth: oklch(0.78 0.05 270);
+  --kr-text: oklch(0.965 0 0);
+  --kr-muted: oklch(0.62 0.01 285);
+}
+.kr-cam, .kr-par-far, .kr-par-near, .kr-orbit, .kr-emerge, .kr-ripple, .kr-qr { transform-box: view-box; }
+@keyframes kr-cam { 0%,100% { transform: scale(1.04) translate(14px, 4px) } 50% { transform: scale(1) translate(-14px, -4px) } }
+@keyframes kr-par { 0%,100% { transform: translate(0,0) } 50% { transform: translate(24px, 8px) } }
+@keyframes kr-parn { 0%,100% { transform: translate(0,0) } 50% { transform: translate(-10px, -4px) } }
+@keyframes kr-orbit { from { transform: rotate(0deg) translateX(190px) scaleY(2.8) rotate(0deg) } to { transform: rotate(360deg) translateX(190px) scaleY(2.8) rotate(-360deg) } }
+@keyframes kr-orbit-path { 0% { offset-distance: 0% } 100% { offset-distance: 100% } }
+@keyframes kr-flow { 0% { offset-distance: 0%; opacity: 0 } 6% { opacity: 1 } 92% { opacity: .9 } 100% { offset-distance: 100%; opacity: 0 } }
+@keyframes kr-dash { to { stroke-dashoffset: -1020 } }
+@keyframes kr-breathe { 0%,100% { opacity: .7 } 50% { opacity: 1 } }
+@keyframes kr-scan { 0%,100% { transform: translateY(0) } 50% { transform: translateY(220px) } }
+@keyframes kr-qr { 0%,100% { opacity: .55 } 8% { opacity: 1 } 30% { opacity: .7 } }
+@keyframes kr-confirm { 0%,70% { opacity: 0; transform: scale(1) } 78% { opacity: .9 } 100% { opacity: 0; transform: scale(1.08) } }
+@keyframes kr-glare { 0% { transform: translateX(-120px) } 100% { transform: translateX(340px) } }
+@keyframes kr-trace { to { stroke-dashoffset: -440 } }
+@keyframes kr-ripple { 0% { transform: scale(.6); opacity: .5 } 100% { transform: scale(3); opacity: 0 } }
+@keyframes kr-blink { 0%,60%,100% { opacity: .3 } 70%,90% { opacity: 1 } }
+@keyframes kr-emerge { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+.kr-cam { transform-origin: 960px 540px; animation: kr-cam 16s cubic-bezier(.45,0,.55,1) infinite; }
+.kr-par-far { animation: kr-par 16s cubic-bezier(.45,0,.55,1) infinite; }
+.kr-par-near { animation: kr-parn 16s cubic-bezier(.45,0,.55,1) infinite; }
+.kr-orbit { offset-path: path("M 300 490 C 440 490, 500 540, 500 560 C 500 600, 400 630, 300 630 C 180 630, 100 600, 100 560 C 100 520, 160 490, 300 490 Z"); offset-rotate: 0deg; animation: kr-orbit-path 12s linear infinite; }
+.kr-particle { offset-path: path("M 300 560 C 520 380, 700 700, 960 540 C 1180 400, 1300 640, 1440 560 C 1560 500, 1640 560, 1720 540"); animation: kr-flow 11s cubic-bezier(.4,0,.6,1) infinite; }
+.kr-dash { animation: kr-dash 4s cubic-bezier(.45,0,.55,1) infinite; }
+.kr-breathe { animation: kr-breathe 6s ease-in-out infinite; }
+.kr-scan { animation: kr-scan 4s cubic-bezier(.65,0,.35,1) infinite; }
+.kr-qr { animation: kr-qr 4s ease-out infinite; }
+.kr-confirm { transform-origin: 960px 540px; animation: kr-confirm 4s cubic-bezier(.2,.8,.2,1) infinite; }
+.kr-glare { animation: kr-glare 6s cubic-bezier(.45,0,.55,1) infinite; }
+.kr-trace { animation: kr-trace 3.5s linear infinite; }
+.kr-ripple { transform-origin: 1720px 530px; animation: kr-ripple 4s cubic-bezier(.2,.7,.3,1) infinite; }
+.kr-blink { animation: kr-blink 4s infinite; }
+.kr-emerge { animation: kr-emerge 7s ease-in-out infinite; }
+.kr-idr-sheen { animation: kr-glare 5s cubic-bezier(.45,0,.55,1) infinite; }
+@media (prefers-reduced-motion: reduce) { [class^="kr-"], [class*=" kr-"] { animation: none !important; } }
+
+/* ── KORAMP illustrations (.ka-*) — ported from koramp-source koramp-anim.css ── */
+.ka-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ka-float { animation: ka-float 8s ease-in-out infinite; transform-box: fill-box; }
+.ka-float.d1 { animation-delay: -2s; animation-duration: 9s; }
+.ka-float.d2 { animation-delay: -4s; animation-duration: 10s; }
+.ka-float.d3 { animation-delay: -6s; animation-duration: 8.5s; }
+@keyframes ka-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+.ka-spin { animation: ka-spin 24s linear infinite; transform-box: view-box; }
+.ka-spin-rev { animation: ka-spin 40s linear infinite reverse; transform-box: view-box; }
+@keyframes ka-spin { to { transform: rotate(360deg); } }
+
+.ka-dash { stroke-dasharray: 6 10; animation: ka-dash 6s linear infinite; }
+@keyframes ka-dash { to { stroke-dashoffset: -160; } }
+
+.ka-pulse { animation: ka-pulse 4s ease-in-out infinite; }
+@keyframes ka-pulse { 0%,100% { opacity: .35; } 50% { opacity: .9; } }
+
+.ka-ripple { animation: ka-ripple 4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.ka-ripple.d1 { animation-delay: -2s; }
+@keyframes ka-ripple { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(2.4); opacity: 0; } }
+
+.ka-label { font-family: var(--font-display); font-size: 22px; letter-spacing: .14em; text-transform: uppercase; fill: var(--muted-foreground); animation: ka-label 16s ease-in-out infinite; }
+.ka-label.d1 { animation-delay: -4s; } .ka-label.d2 { animation-delay: -8s; } .ka-label.d3 { animation-delay: -12s; }
+@keyframes ka-label { 0%,100% { opacity: .25; } 20%,45% { opacity: 1; } }
+.ka-label-static { font-family: var(--font-display); font-size: 22px; letter-spacing: .18em; text-transform: uppercase; fill: var(--muted-foreground); }
+@media (max-width: 640px) { .ka-label, .ka-label-static { font-size: 40px; } }
+
+.ka-shackle { animation: ka-shackle 8s cubic-bezier(.6,0,.3,1) infinite; }
+@keyframes ka-shackle { 0%,15% { transform: translateY(-18px); } 35%,85% { transform: translateY(0); } 100% { transform: translateY(-18px); } }
+.ka-lockglow { animation: ka-lockglow 8s ease-in-out infinite; }
+@keyframes ka-lockglow { 0%,30% { opacity: 0; } 40%,80% { opacity: .9; } 100% { opacity: 0; } }
+
+.ka-scan { animation: ka-scan 4s ease-in-out infinite alternate; }
+@keyframes ka-scan { from { transform: translateY(0); } to { transform: translateY(150px); } }
+.ka-check { stroke-dasharray: 80; animation: ka-check 8s ease-in-out infinite; }
+@keyframes ka-check { 0%,45% { stroke-dashoffset: 80; opacity: 0; } 55%,85% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+.ka-checkring { animation: ka-checkring 8s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ka-checkring { 0%,50% { transform: scale(.5); opacity: 0; } 55% { opacity: .9; } 85%,100% { transform: scale(2.2); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ka-svg * { animation: none !important; }
+}
+
+/* ── Currency label cycling (IDR → USD → EUR → …) ── */
+.currency-swap { animation: currency-swap .5s ease-out; }
+@keyframes currency-swap { from { opacity: 0; } to { opacity: 1; } }

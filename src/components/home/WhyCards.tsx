@@ -182,9 +182,7 @@ function CardItem({
         )}
       >
         <div className="flex min-h-[104px] items-center gap-4 px-6 py-5 lg:min-h-[112px]">
-          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(150,121,79,0.30)] bg-[rgba(150,121,79,0.12)]">
-            <Icon className="h-5 w-5 text-[var(--k-accent)]" aria-hidden />
-          </div>
+          <Icon className="h-7 w-7 flex-shrink-0 text-[var(--k-accent)]" aria-hidden />
           <div className="min-w-0">
             <h3 className="mb-0.5 text-[18px] font-semibold leading-snug text-[#F5F5F5]">{card.title}</h3>
             <p className="text-sm leading-relaxed text-[#8B8B93]">{card.desc}</p>
