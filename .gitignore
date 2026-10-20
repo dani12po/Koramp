@@ -64,3 +64,7 @@ scripts/
 
 # Docs subdirectory — repo terpisah, jangan ikut push ke repo utama
 docs/
+
+# Local reference / source material — sudah diterapkan ke kode, hapus & jangan commit
+koramp-assets/
+koramp-source/
