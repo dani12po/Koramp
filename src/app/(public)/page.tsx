@@ -31,8 +31,8 @@ const SEGMENTS = [
   },
   {
     title: 'Komunitas Web3',
-    desc: 'Onboarding rupiah untuk anggota komunitas, bayar via QRIS, crypto masuk langsung ke wallet masing-masing.',
-    tag: 'QRIS → Wallet',
+    desc: 'Onboarding rupiah untuk anggota komunitas, bayar via payment gateway, crypto masuk langsung ke wallet masing-masing.',
+    tag: 'Payment → Wallet',
   },
   {
     title: 'UMKM & Bisnis Digital',
@@ -42,9 +42,11 @@ const SEGMENTS = [
 ];
 
 const STATS = [
-  { value: 'Rp 850Jt+', label: 'Volume IDR terproses' },
-  { value: '12.400+', label: 'Total transaksi' },
-  { value: '99,9%', label: 'Uptime layanan' },
+  // Angka ini adalah klaim historis — verifikasi dari DB sebelum produksi.
+  // TODO: connect ke /api/admin/stats jika ingin live stats
+  { value: 'Rp 850Jt+', label: 'Volume IDR (beta)' },
+  { value: '12.400+', label: 'Transaksi (beta)' },
+  { value: '99,9%', label: 'Uptime target' },
 ];
 
 const TRUST = ['Tanpa daftar akun', 'Harga transparan', 'Diverifikasi otomatis'];
@@ -186,7 +188,7 @@ export default function HomePage() {
               Hubungkan wallet. Quote, pembayaran QRIS, dan payout berjalan otomatis sampai beres.
             </p>
             <div className="flex flex-col gap-3">
-              {['Hubungkan wallet', 'Kunci quote instan', 'Bayar via QRIS / kirim crypto'].map((s, i) => (
+              {['Hubungkan wallet', 'Kunci quote instan', 'Bayar via payment gateway / kirim crypto'].map((s, i) => (
                 <div key={s} className="flex items-center gap-3">
                   <span className="tnum w-6 h-6 rounded-full bg-[#D4B78F]/10 border border-[#D4B78F]/25 text-[#D4B78F] text-xs flex items-center justify-center font-semibold" aria-hidden>
                     {i + 1}

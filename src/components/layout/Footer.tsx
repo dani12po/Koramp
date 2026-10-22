@@ -34,7 +34,7 @@ export function Footer() {
             <div className="flex flex-wrap items-center gap-3 mt-4">
               <span className="inline-flex items-center gap-1.5 text-[#8B8B93] text-xs">
                 <CreditCard className="w-3 h-3 text-[#D4B78F]" aria-hidden />
-                QRIS payment
+                MoonPay
               </span>
               <a
                 href={DOCS}
@@ -83,6 +83,18 @@ export function Footer() {
             <div className="space-y-2 mb-6">
               <Link href="/contact" className="block text-[#8B8B93] hover:text-[#F5F5F5] text-sm transition-colors">Hubungi Kami</Link>
               <Link href="/privacy" className="block text-[#8B8B93] hover:text-[#F5F5F5] text-sm transition-colors">Kebijakan Privasi</Link>
+              <Link href="/terms" className="block text-[#8B8B93] hover:text-[#F5F5F5] text-sm transition-colors">Syarat &amp; Ketentuan</Link>
+              <Link href="/risk" className="block text-[#8B8B93] hover:text-[#F5F5F5] text-sm transition-colors">Pengungkapan Risiko</Link>
+              <Link href="/fees" className="block text-[#8B8B93] hover:text-[#F5F5F5] text-sm transition-colors">Biaya &amp; Fee</Link>
+              <a
+                href="https://twitter.com/korampxyz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[#8B8B93] hover:text-[#F5F5F5] text-sm transition-colors group"
+              >
+                𝕏 @korampxyz
+                <ExternalLink className="w-3 h-3 opacity-40 group-hover:opacity-70 transition-opacity" aria-hidden />
+              </a>
             </div>
             <p className="text-[#F5F5F5] font-semibold text-sm mb-3">Aset yang Didukung</p>
             <div className="space-y-2 text-sm text-[#8B8B93]">

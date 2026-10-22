@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { WalletSidebarButton } from '@/components/wallet/WalletSidebar';
 import { Menu, X, ExternalLink } from 'lucide-react';
+import { NetBanner } from '@/components/ui/NetBanner';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 
@@ -37,6 +38,7 @@ export function Navbar() {
           : 'border-[#1A1A1A] bg-[#08080A]',
       )}
     >
+      <NetBanner variant="header" />
       {/* FULL-WIDTH bar: tanpa max-width — logo/men/wallet diposisikan
           terhadap viewport, bukan terhadap content container. */}
       <div className="w-full px-6">
