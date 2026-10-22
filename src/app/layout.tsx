@@ -1,40 +1,37 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import './globals.css';
-// Official Solana wallet-adapter modal styles (static CSS only — no wallet
-// JS enters the server graph; providers stay mounted on public routes only).
 import '@solana/wallet-adapter-react-ui/styles.css';
 import { ClientErrorFilter } from '@/components/ui/ClientErrorFilter';
+import { SITE_URL } from '@/lib/site';
 
-// Root layout is intentionally minimal (P2).
+// Root layout is intentionally minimal.
 // - NO WalletProviders here (only public wallet routes mount it via (public)/layout).
 // - NO AuthProvider here (only /admin/* mounts it via (admin)/layout).
-// Route groups (public)/(admin) preserve public URLs while splitting bundles.
+
+const OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 export const metadata: Metadata = {
-  metadataBase: new URL((process.env.NEXT_PUBLIC_APP_URL ?? '').trim() || 'https://www.koramp.xyz'),
+  // metadataBase: satu sumber kebenaran via SITE_URL — tidak pernah localhost.
+  metadataBase: new URL(SITE_URL),
+
   title: {
-    default: 'KORAMP: Top Up & Sell Crypto with IDR',
+    default: 'KORAMP — Crypto On/Off-Ramp Beta',
     template: '%s · KORAMP',
   },
+
+  // Description jujur: produk dalam beta, tidak mengklaim "terpercaya" atau "instan".
   description:
-    'Beli SOL, ETH, BNB dengan Rupiah atau jual crypto dan terima IDR langsung ke rekening bank. Cukup hubungkan wallet, tanpa daftar akun.',
-  keywords: [
-    'beli crypto IDR',
-    'jual crypto rupiah',
-    'top up SOL ETH BNB',
-    'koramp',
-    'kripto Indonesia',
-    'on-ramp crypto Indonesia',
-    'off-ramp crypto Indonesia',
-    'beli solana IDR',
-    'jual solana rupiah',
-    'crypto QRIS',
-    'tukar rupiah crypto',
-    'crypto ke rekening bank Indonesia',
-    'MoonPay Indonesia',
-    'crypto on ramp off ramp',
-  ],
-  alternates: { canonical: '/' },
+    'KORAMP adalah platform beta crypto on/off-ramp untuk pasar Indonesia. ' +
+    'Beli SOL, ETH, atau BNB dengan Rupiah, atau jual crypto dan terima IDR ke rekening bank. ' +
+    'Hubungkan wallet — tanpa daftar akun. Produk dalam tahap pengembangan aktif.',
+
+  // keywords dihapus — tidak berguna untuk SEO modern (diabaikan Google sejak 2009).
+
+  alternates: {
+    canonical: SITE_URL,
+  },
+
   robots: {
     index: true,
     follow: true,
@@ -46,40 +43,81 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+
   openGraph: {
-    title: 'KORAMP: Crypto On/Off-Ramp Marketplace',
+    title: 'KORAMP — Crypto On/Off-Ramp Beta',
     description:
-      'Beli SOL, ETH, BNB dengan Rupiah atau jual crypto dan terima IDR ke rekening bank. Wallet-first, tanpa daftar akun.',
+      'Platform beta untuk beli SOL, ETH, BNB dengan Rupiah atau jual crypto ke IDR. ' +
+      'Wallet-first, tanpa daftar akun. Masih dalam pengembangan aktif.',
     type: 'website',
-    url: 'https://www.koramp.xyz',
+    url: SITE_URL,
     siteName: 'KORAMP',
     locale: 'id_ID',
     images: [
       {
-        url: '/og-image.png',
+        // URL absolut — tidak bergantung metadataBase agar tidak ada risiko localhost.
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: 'KORAMP — Crypto On/Off-Ramp IDR',
+        alt: 'KORAMP — Crypto On/Off-Ramp Beta',
       },
     ],
   },
+
   twitter: {
     card: 'summary_large_image',
-    title: 'KORAMP: Top Up & Sell Crypto with IDR',
+    title: 'KORAMP — Crypto On/Off-Ramp Beta',
     description:
-      'Beli SOL, ETH, BNB dengan Rupiah atau jual crypto dan terima IDR ke rekening bank. Tanpa daftar akun.',
-    images: ['/og-image.png'],
+      'Beli SOL, ETH, BNB dengan Rupiah atau jual crypto ke IDR. Tanpa daftar akun. Beta.',
+    images: [OG_IMAGE],
     site: '@korampxyz',
   },
-  verification: {
-    // Isi dengan kode verifikasi dari Google Search Console setelah submit
-    // google: 'GOOG_VERIFICATION_CODE',
-  },
+
+  // Isi setelah mendapat kode dari Google Search Console:
+  // verification: { google: 'GOOG_VERIFICATION_CODE' },
+};
+
+/** JSON-LD Organization + WebSite — data yang diketahui, tanpa mengarang. */
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'KORAMP',
+      url: SITE_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${SITE_URL}/logo.png`,
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        email: 'Kipramp@proton.me',
+        contactType: 'customer support',
+      },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: 'KORAMP',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+    },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" className="dark">
+      <head>
+        <Script
+          id="json-ld"
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          strategy="beforeInteractive"
+        />
+      </head>
       <body>
         <ClientErrorFilter />
         {children}

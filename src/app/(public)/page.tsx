@@ -86,14 +86,26 @@ export default function HomePage() {
             ON/OFF-RAMP IDR <span aria-hidden>⇄</span> CRYPTO GLOBAL
           </p>
 
+          {/*
+            H1 dirender di server — teks statis terlihat oleh crawler.
+            RotatingCurrency hanya mengganti kata secara visual post-hydration;
+            <noscript> fallback memastikan teks tetap ada tanpa JS.
+          */}
           <h1 className="font-bold text-[#F5F5F5] text-[clamp(42px,6vw,72px)] leading-[1.08] tracking-[-0.02em] mb-6">
             Terima crypto global, settle{' '}
-            <RotatingCurrency className="font-bold text-[#D4B78F]" /> instan
+            <RotatingCurrency className="font-bold text-[#D4B78F]" />
+            {' '}instan
           </h1>
+          <noscript>
+            <p className="sr-only">
+              Terima crypto global, settle Rupiah instan
+            </p>
+          </noscript>
 
           <p className="text-[#CFCFD4] text-sm leading-relaxed mb-8 max-w-[700px] mx-auto">
-            Rails modern untuk settlement IDR yang cepat, andal, dan skalabel.
-            Settlement cepat. Fee rendah. Satu loket sederhana.
+            Platform beta crypto on/off-ramp untuk pasar Indonesia.
+            Beli SOL, ETH, atau BNB dengan Rupiah — atau jual crypto ke IDR.
+            Tanpa daftar akun. Produk dalam pengembangan aktif.
           </p>
 
           <ul className="flex flex-wrap justify-center gap-x-6 gap-y-2" aria-label="Jaminan layanan">
