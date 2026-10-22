@@ -34,7 +34,7 @@ export function Footer() {
             <div className="flex flex-wrap items-center gap-3 mt-4">
               <span className="inline-flex items-center gap-1.5 text-[#8B8B93] text-xs">
                 <CreditCard className="w-3 h-3 text-[#D4B78F]" aria-hidden />
-                MoonPay
+                QRIS payment
               </span>
               <a
                 href={DOCS}

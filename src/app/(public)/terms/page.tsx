@@ -54,12 +54,12 @@ const SECTIONS = [
     ],
   },
   {
-    title: '4. Payment Gateway Pihak Ketiga',
+    title: '4. Payment Gateway & Pembayaran',
     body: [
       // TODO: perbarui jika payment gateway berubah
-      'Layanan on-ramp dan off-ramp diproses melalui MoonPay sebagai merchant of record. MoonPay bertanggung jawab atas proses KYC/AML, verifikasi pembayaran, dan kepatuhan regulasi transaksi.',
-      'Ketersediaan layanan MoonPay bergantung pada wilayah dan aset yang didukung. KORAMP tidak bertanggung jawab atas penolakan transaksi, keterlambatan, atau pembatasan yang diterapkan oleh MoonPay.',
-      'Dengan menggunakan layanan ini, Anda juga tunduk pada syarat dan ketentuan MoonPay yang berlaku.',
+      'Layanan on-ramp (Top Up) diproses melalui Xendit QRIS — pengguna membayar IDR via QRIS, KORAMP mengirimkan crypto ke wallet tujuan setelah pembayaran terverifikasi server-side.',
+      'Layanan off-ramp (Sell) diproses melalui Xendit Payout v3 — KORAMP menerima crypto di deposit address, lalu meneruskan payout IDR ke rekening bank pengguna setelah deposit dikonfirmasi blockchain.',
+      'Ketersediaan layanan bergantung pada operasional Xendit. KORAMP tidak bertanggung jawab atas keterlambatan atau kegagalan yang disebabkan oleh infrastruktur Xendit.',
     ],
   },
   {

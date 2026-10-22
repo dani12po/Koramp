@@ -159,7 +159,7 @@ export default function FeesPage() {
           <p className="text-[#8B8B93] text-xs leading-relaxed">
             Angka fee di atas adalah nilai default dan dapat dikonfigurasi oleh admin.
             Nilai aktif yang berlaku selalu ditampilkan dalam quote sebelum konfirmasi transaksi.
-            Biaya payment gateway MoonPay belum termasuk dan dapat berbeda sesuai metode pembayaran dan wilayah.
+            Biaya jaringan blockchain dan biaya Xendit belum termasuk dalam tampilan di atas dan dapat berbeda sesuai kondisi aktual.
           </p>
         </div>
 

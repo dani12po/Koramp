@@ -44,9 +44,9 @@ const SECTIONS = [
     title: 'Risiko Ketergantungan Pihak Ketiga',
     highlight: false,
     body: [
-      'Layanan bergantung pada MoonPay sebagai payment gateway. Gangguan atau penolakan dari MoonPay dapat mempengaruhi ketersediaan layanan.',
-      'Layanan juga bergantung pada penyedia RPC blockchain, Xendit (untuk payout bank), dan penyedia harga pasar.',
-      'Ketersediaan MoonPay bergantung pada wilayah dan regulasi setempat. KORAMP tidak menjamin layanan MoonPay tersedia di wilayah Anda.',
+      'Layanan Top Up bergantung pada Xendit untuk pemrosesan QRIS dan Xendit Payout v3 untuk disbursement IDR ke rekening bank. Gangguan pada infrastruktur Xendit dapat mempengaruhi ketersediaan layanan.',
+      'Layanan juga bergantung pada penyedia RPC blockchain (Alchemy, public endpoints), penyedia harga pasar (Binance, CoinGecko), dan infrastruktur hosting. Kegagalan pada pihak ketiga ini dapat menyebabkan gangguan layanan.',
+      'KORAMP memantau status layanan pihak ketiga tetapi tidak dapat menjamin ketersediaan penuh di luar kendalinya.',
     ],
   },
   {

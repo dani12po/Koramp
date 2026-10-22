@@ -5,15 +5,15 @@
  *
  * ALL brand artwork below is the actual official asset, served locally from
  * /public/logos (no hotlinking, no recreation):
- * - MoonPay: official wordmark SVG (purple #7D00FF) — Wikimedia Commons (PD)
+ * - Xendit: official logo PNG
  * - Solana: full horizontal lockup SVG from https://solana.com/branding
  * - Base: white lockup SVG from the official Base brand kit (brand.base.org)
  * - BNB Chain: lockup SVG from official BNB Chain docs (docs.bnbchain.org)
  * - Blockchain.com: lockup SVG from Blockchain.com's own GitHub repo
  *
  * Currencies (fiat) use a neutral gold badge with the currency symbol +
- * wordmark (not a company logo). IDR tetap jadi anchor (KORAMP IDR-first),
- * tapi sekarang didampingi mata uang lain — sinyal jangkauan global MoonPay.
+ * wordmark (not a company logo). IDR adalah anchor (KORAMP IDR-first),
+ * didampingi mata uang lain sebagai sinyal jangkauan global.
  *
  * Artwork is never altered: only display height is normalized (width auto,
  * exact aspect ratios preserved), plus opacity for dark-theme integration.
@@ -43,8 +43,8 @@ interface Item {
 const WORDMARK_SIZE = 30;
 
 const ITEMS: Item[] = [
-  // ─── Payment gateway ──────────────────────────────────────────────
-  { id: 'moonpay', label: 'MoonPay', href: 'https://www.moonpay.com', src: '/logos/moonpay.svg', width: 722.9, height: 159.1, h: 72 },
+  // ─── Payment infrastructure ───────────────────────────────────────────
+  { id: 'xendit', label: 'Xendit', href: 'https://www.xendit.co/', src: '/logos/xendit.png', width: 432, height: 132, h: 72 },
   // ─── Chains & ecosystem ───────────────────────────────────────────
   { id: 'blockchain', label: 'Blockchain.com', href: 'https://www.blockchain.com/', src: '/logos/blockchaincom.svg', width: 432, height: 48, h: 72 },
   { id: 'solana', label: 'Solana', href: 'https://solana.com/', src: '/logos/solana.svg', width: 646, height: 96, h: 72 },
