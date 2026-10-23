@@ -407,7 +407,7 @@ export function SwapWidget() {
   useEffect(() => {
     if (stage !== 'processing' && stage !== 'success') return;
     if (isBuy || !order?.publicId || depositStatus === 'confirmed') return;
-    const id = setInterval(() => { void pollDeposit(order.publicId); }, 8000);
+    const id = setInterval(() => { void pollDeposit(order.publicId); }, 5000);
     return () => clearInterval(id);
   }, [stage, isBuy, order?.publicId, depositStatus, pollDeposit]);
 
@@ -448,6 +448,13 @@ export function SwapWidget() {
         });
       } catch { /* poll-deposit fallback */ }
       await pollDeposit(order.publicId);
+      // Immediately poll every 3s for first 30s after wallet send (aggressive detection)
+      let fastPollCount = 0;
+      const fastPollId = setInterval(async () => {
+        fastPollCount++;
+        await pollDeposit(order.publicId);
+        if (fastPollCount >= 10) clearInterval(fastPollId);
+      }, 3000);
     } catch (err: any) {
       const msg = String(err?.message ?? '');
       toast.error(/reject|denied/i.test(msg) ? 'Transaksi dibatalkan oleh pengguna.' : `Gagal kirim: ${msg.slice(0, 80)}`);
@@ -891,7 +898,14 @@ export function SwapWidget() {
                     </ToolChip>
                   </div>
                   <button
-                    onClick={() => { void pollDeposit(order.publicId); toast.success('Memindai blockchain...'); }}
+                    onClick={() => { void pollDeposit(order.publicId); toast.success('Memindai blockchain...');
+                    // Immediately poll every 3s for first 30s after manual confirm
+                    let fastPollCount2 = 0;
+                    const fastPollId2 = setInterval(async () => {
+                      fastPollCount2++;
+                      await pollDeposit(order.publicId);
+                      if (fastPollCount2 >= 10) clearInterval(fastPollId2);
+                    }, 3000); }}
                     className="w-full py-2.5 border border-line hover:border-line-strong text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
                   >
                     Saya sudah mengirim, cek sekarang

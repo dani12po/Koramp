@@ -119,7 +119,7 @@ export async function createTopUpOrder(opts: {
         },
       });
       return { order: failedOrder, payment: failedPayment };
-    });
+    }, { timeout: 15000 });
     return {
       ...recovered,
       kipayTrxId: null,
@@ -231,7 +231,7 @@ export async function createSellOrder(opts: {
     });
 
     return newOrder;
-  });
+  }, { timeout: 15000 });
 
   return { order };
 }
@@ -371,7 +371,7 @@ export async function verifyAndFulfillTopUp(publicId: string, opts?: { throttleM
         where: { id: order.id },
         data: { status: 'PAYMENT_FAILED', failureReason: 'QRIS expired — buat order baru.' },
       });
-    });
+    }, { timeout: 15000 });
     return { state: 'EXPIRED' };
   }
   // decision === 'confirm': verifikasi penuh SEBELUM fulfill (§41).
@@ -510,7 +510,7 @@ export async function processCryptoDelivery(topUpOrderId: string) {
             where: { id: order.id },
             data: { status: 'COMPLETED', cryptoTxHash: order.withdrawal!.txHash!, completedAt: new Date() },
           });
-        });
+        }, { timeout: 15000 });
         return;
       }
       // Still confirming — leave as CRYPTO_PROCESSING for cron to re-check.
@@ -629,7 +629,7 @@ export async function processCryptoDelivery(topUpOrderId: string) {
           where: { id: order.id },
           data: { status: 'COMPLETED', cryptoTxHash: txHash, completedAt: new Date() },
         });
-      });
+      }, { timeout: 15000 });
     } else {
       // CONFIRMING/UNKNOWN — leave recoverable for cron, never mark FAILED here.
       await prisma.cryptoWithdrawal.update({
@@ -735,7 +735,7 @@ export async function processSellPayout(sellOrderId: string) {
           metadata: JSON.stringify({ error: message }),
         },
       });
-    });
+    }, { timeout: 15000 });
   }
 }
 
@@ -773,7 +773,7 @@ async function pollXenditPayoutUntilFinal(
             where: { id: sellOrderId },
             data: { status: 'PAYOUT_FAILED', failureReason: reason },
           });
-        });
+        }, { timeout: 15000 });
         console.error('[pollXenditPayout]', reason);
         return;
       }
@@ -820,7 +820,7 @@ export async function verifyAndFulfillPayout(sellOrderId: string): Promise<{ sta
     await prisma.$transaction(async (tx) => {
       await tx.payout.updateMany({ where: { sellOrderId }, data: { status: 'FAILED', failureReason: reason, xenditStatus: r.status, failureCode: r.status } });
       await tx.sellOrder.update({ where: { id: sellOrderId }, data: { status: 'PAYOUT_FAILED', failureReason: reason } });
-    });
+    }, { timeout: 15000 });
     return { state: 'FAILED' };
   }
   return { state: 'PENDING' };
@@ -887,5 +887,5 @@ export async function completeSellPayout(sellOrderId: string, providerRef?: stri
         metadata: JSON.stringify({ provider: 'xendit', providerRef }),
       },
     });
-  });
+  }, { timeout: 15000 });
 }
