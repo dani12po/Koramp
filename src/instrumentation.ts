@@ -47,7 +47,8 @@ export async function register() {
     if (process.env.NODE_ENV === 'production') {
       const missing: string[] = [];
       if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'dev-secret-change-in-production') missing.push('JWT_SECRET');
-      if (!process.env.XENDIT_API_KEY) missing.push('XENDIT_API_KEY');
+      if (!process.env.KIPAY_API_KEY) missing.push('KIPAY_API_KEY');
+      if (!process.env.KIPAY_MODE || (process.env.KIPAY_MODE !== 'sandbox' && process.env.KIPAY_MODE !== 'production')) missing.push('KIPAY_MODE=sandbox|production');
       if (process.env.BLOCKCHAIN_PROVIDER !== 'real') missing.push('BLOCKCHAIN_PROVIDER=real');
       if (missing.length) {
         // Workers-safe: never process.exit() here — workerd has no process
@@ -61,6 +62,9 @@ export async function register() {
       }
       if (!process.env.XENDIT_WEBHOOK_TOKEN) {
         console.error('[instrumentation] WARNING: XENDIT_WEBHOOK_TOKEN not set — webhooks rejected until configured');
+      }
+      if (!process.env.KIPAY_WEBHOOK_SECRET) {
+        console.error('[instrumentation] WARNING: KIPAY_WEBHOOK_SECRET not set — KiPay webhooks rejected until configured');
       }
       if (!process.env.ADMIN_TOTP_SECRET) {
         console.error('[instrumentation] WARNING: ADMIN_TOTP_SECRET not set — admin 2FA disabled');
