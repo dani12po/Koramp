@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     // Rate limiting
     const ip = getClientIp(req);
-    // Ban gate: rejected before any expensive work (blockchain RPC, Xendit, DB writes).
+    // Ban gate: rejected before any expensive work (blockchain RPC, KiPay, DB writes).
     {
       const { banGate } = await import('@/lib/security');
       const rej = await banGate(ip);
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const result = await createTopUpOrder(body);
     const paymentCreation = 'paymentCreation' in result ? result.paymentCreation : undefined;
     return ok(
-      { order: result.order, payment: result.payment, providerOrderId: result.providerOrderId, paymentCreation },
+      { order: result.order, payment: result.payment, kipayTrxId: result.kipayTrxId, paymentCreation },
       paymentCreation ? 202 : 201,
     );
   } catch (err) { return handleError(err); }

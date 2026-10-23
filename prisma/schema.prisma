@@ -185,16 +185,16 @@ model SellOrder {
 model Payment {
   id                    String    @id @default(uuid())
   topUpOrderId          String    @unique
-  // Legacy KiPay fields (retired provider — columns kept, unused for new orders)
+  // KiPay fields (active Top Up provider)
   kipayTrxId            String?   @unique  // e.g. "SBX-20260825-VG57V5"
   kipayMode             String?   // sandbox | production
-  // Generic provider fields (active: xendit)
-  // LEGACY values "transfi" / kipay channels may appear on historical rows only.
-  provider              String?   // xendit (new orders)
-  providerOrderId       String?   @unique  // Xendit payment_request_id (pr-...)
-  providerStatus        String?   // last verified Xendit payment_request status
-  providerChannel       String?   // e.g. QRIS
-  payUrl                String?   // Xendit redirect action fallback (rare for QRIS)
+  // Xendit fields (used for Payout reconciliation only — no new Top Up orders)
+  // Historical Xendit payment_request rows may still carry these.
+  provider              String?   // 'xendit' for sell payout metadata (historical)
+  providerOrderId       String?   @unique  // historical Xendit payment_request_id
+  providerStatus        String?   // historical Xendit payment_request status
+  providerChannel       String?   // historical
+  payUrl                String?   // historical Xendit redirect URL
   providerFee           Decimal?  // LEGACY provider fee snapshot (unused for new Xendit orders)
   providerRate          Decimal?  // LEGACY provider rate snapshot (unused for new Xendit orders)
   providerQuote         String?   // LEGACY JSON snapshot of provider quote (audit, unused for new orders)

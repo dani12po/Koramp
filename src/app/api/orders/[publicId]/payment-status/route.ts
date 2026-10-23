@@ -87,15 +87,13 @@ async function handlePaymentStatus(req: NextRequest, { params }: { params: { pub
 function paymentView(payment: Payment, orderStatus: string) {
   return {
     status: payment.status,
-    provider: payment.provider,
-    providerOrderId: payment.providerOrderId,
-    providerStatus: payment.providerStatus,
+    provider: 'kipay',
+    kipayTrxId: payment.kipayTrxId,
     requestedAmount: payment.requestedAmount,
     uniqueCode: payment.uniqueCode,
     grossAmount: payment.grossAmount,
     feeAmount: payment.feeAmount,
     netAmount: payment.netAmount,
-    payUrl: payment.payUrl,
     qrPayload: qrVisibleForStatus(orderStatus) ? payment.qrPayload : null,
     paidAt: payment.paidAt,
     expiresAt: payment.expiresAt,

@@ -1,28 +1,22 @@
 import Decimal from 'decimal.js';
+import type { KipayTransaction } from './kipay';
 import { prisma } from './prisma';
 import { validateAndUseQuote, AssetSymbol, NetworkId, validateAssetNetwork } from './pricing';
 import { getBlockchainProvider, type BlockchainProvider } from './blockchain';
+import { kipayCreateTransaction, kipayGetTransaction, KiPayError } from './kipay';
 import {
-  xenditCreatePaymentRequest,
-  xenditGetPaymentRequest,
   xenditCreatePayout,
   xenditGetPayout,
   payoutIdempotencyKeyForSellOrder,
-  isXenditSuccessStatus,
-  isXenditFailedStatus,
   isXenditPayoutSuccess,
   isXenditPayoutFailed,
-  verifyXenditPaymentAmounts,
-  decideXenditTopUpTransition,
-  getXenditConfig,
-  XenditError,
-  XENDIT_PAYMENT_CHANNEL,
 } from './xendit';
 import { generatePublicId, generateOrderNumber } from './id';
 import { AppError, ValidationError } from './errors';
 
-// Re-export pure Xendit transition helpers (single source in ./xendit).
-export { verifyXenditPaymentAmounts, decideXenditTopUpTransition } from './xendit';
+// Re-export pure KiPay transition helpers (single source in ./kipay + local).
+export { verifyKipayAmounts, decideTopUpTransition } from './orders-helpers';
+import { parseKipayTime, decideTopUpTransition } from './orders-helpers';
 
 function requiredConfirmations(asset: string): number {
   // Testnet: low confirmations for fast testing
@@ -52,10 +46,10 @@ export async function createTopUpOrder(opts: {
 
   const quote = await validateAndUseQuote(opts.quoteId, 'TOP_UP');
   const orderNumber = generateOrderNumber();
-  const publicId = generatePublicId('krm');
+  const publicId = generatePublicId('krp');
   const orderExpiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 min
 
-  // Order + payment DIBUAT DULU (recoverable) — Xendit menyusul.
+  // Order + payment DIBUAT DULU (recoverable) — KiPay menyusul.
   // Quote tetap dikonsumsi atomik di atas (anti double-spend via reuse).
   const order = await prisma.topUpOrder.create({
     data: {
@@ -87,40 +81,20 @@ export async function createTopUpOrder(opts: {
     },
   });
 
-  // Create Xendit QRIS payment — reference_id = KORAMP publicId (one-to-one).
-  // Decimal rounding, never float. Customer amount = KORAMP totalIdr.
+  // Create KiPay transaction for QRIS — Decimal rounding, never float (P23).
   const idrInt = new Decimal(quote.totalIdr.toString()).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
-  // Provider capability guard: documented QRIS max (fail fast before upstream).
+  let kipayTx;
   try {
-    const xcfg = getXenditConfig();
-    if (idrInt > xcfg.paymentMaxIdr) {
-      const failExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
-      const recovered = await prisma.$transaction(async (tx) => {
-        await tx.payment.update({ where: { id: payment.id }, data: { status: 'FAILED', expiresAt: failExpiresAt } });
-        const failedOrder = await tx.topUpOrder.update({
-          where: { id: order.id },
-          data: { status: 'PAYMENT_CREATE_FAILED', failureReason: `Nominal melebihi batas QRIS (${xcfg.paymentMaxIdr} IDR).`, expiresAt: failExpiresAt },
-        });
-        return { order: failedOrder, payment: null };
-      });
-      return {
-        ...recovered,
-        providerOrderId: null,
-        paymentCreation: { state: 'FAILED', message: `Nominal melebihi batas pembayaran QRIS. Maksimum ${xcfg.paymentMaxIdr} IDR.` },
-      };
-    }
-  } catch {
-    // Config missing → fall through to create call which surfaces CONFIGURATION safely.
-  }
-  let xpOrder;
-  try {
-    xpOrder = await xenditCreatePaymentRequest({ referenceId: publicId, amountIdr: idrInt });
+    kipayTx = await kipayCreateTransaction({
+      amount: idrInt,
+      note: orderNumber,
+    });
   } catch (e) {
-    // Gagal deterministik (400/404/409) → FAILED, user buat order baru (tanpa retry).
+    // Gagal deterministik (400/404) → FAILED, user buat order baru (tanpa retry).
     // Ambigu (timeout/5xx) → UNKNOWN, JANGAN buat transaksi kedua (§10);
     // reconcile men-expire-nya agar user bisa buat order baru dengan aman.
-    const isUnknown = e instanceof XenditError && (e.category === 'UNKNOWN' || e.category === 'TRANSIENT');
-    const safeCategory = e instanceof XenditError ? e.category : 'UNKNOWN';
+    const isUnknown = e instanceof KiPayError && (e.category === 'UNKNOWN' || e.category === 'TRANSIENT');
+    const safeCategory = e instanceof KiPayError ? e.category : 'UNKNOWN';
     const failExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
     const recovered = await prisma.$transaction(async (tx) => {
       const failedPayment = await tx.payment.update({
@@ -132,8 +106,8 @@ export async function createTopUpOrder(opts: {
         data: {
           status: isUnknown ? 'PAYMENT_CREATE_UNKNOWN' : 'PAYMENT_CREATE_FAILED',
           failureReason: isUnknown
-            ? 'Pembayaran tidak dapat dipastikan. Buat order baru.'
-            : 'Layanan pembayaran tidak tersedia. Buat order baru.',
+            ? 'Pembayaran tidak dapat dipastikan — buat order baru.'
+            : 'Layanan pembayaran tidak tersedia — buat order baru.',
           expiresAt: failExpiresAt,
         },
       });
@@ -148,29 +122,29 @@ export async function createTopUpOrder(opts: {
     });
     return {
       ...recovered,
-      providerOrderId: null,
+      kipayTrxId: null,
       paymentCreation: {
         state: isUnknown ? 'UNKNOWN' : 'FAILED',
         message: 'Layanan pembayaran sedang tidak tersedia. Silakan coba lagi.',
       },
     };
-
   }
 
-  // Store Xendit response ke payment record (provider fields generik).
+  // Store KiPay response ke payment record
   const updatedPayment = await prisma.payment.update({
     where: { id: payment.id },
     data: {
-      provider: 'xendit',
-      providerOrderId: xpOrder.paymentRequestId,
-      providerStatus: xpOrder.status,
-      providerChannel: xpOrder.channelCode ?? XENDIT_PAYMENT_CHANNEL,
-      payUrl: xpOrder.redirectUrl ?? null,
-      qrPayload: xpOrder.qrString ?? null,
-      providerCreatedAt: new Date(),
-      providerUpdatedAt: new Date(),
+      kipayTrxId: kipayTx.trx_id,
+      kipayMode: kipayTx.mode,
+      requestedAmount: kipayTx.requested_amount,
+      uniqueCode: kipayTx.unique_code,
+      grossAmount: kipayTx.amount,
+      feeAmount: kipayTx.fee_amount,
+      // net_amount not returned by create/get in KiPay v1.2.0 (only in webhook)
       status: 'PENDING',
-      note: orderNumber,
+      // qr_payload not in JSON response v1.2.0 — QR fetched via GET /qr.png
+      note: kipayTx.note,
+      expiresAt: new Date(kipayTx.expires_at ?? orderExpiresAt.toISOString()),
       lastVerifiedAt: new Date(),
     },
   });
@@ -180,7 +154,7 @@ export async function createTopUpOrder(opts: {
     data: { status: 'PAYMENT_PENDING' },
   });
 
-  return { order, payment: updatedPayment, providerOrderId: xpOrder.paymentRequestId, payUrl: xpOrder.redirectUrl ?? null };
+  return { order, payment: updatedPayment, kipayTrxId: kipayTx.trx_id };
 }
 
 // ─── SELL ─────────────────────────────────────────────────────────────────────
@@ -265,76 +239,83 @@ export async function createSellOrder(opts: {
 // ─── PAYMENT WEBHOOK PROCESSOR (Xendit) ─────────────────────────────────────────
 // Webhook hanya sinyal — fulfillment selalu via server-to-server GET payment request.
 
-export interface XenditPaymentWebhookInput {
-  event: string;
-  paymentRequestId: string;
-  referenceId: string;
-  status: string;
-  paymentId?: string | null;
+// ─── PAYMENT WEBHOOK PROCESSOR ────────────────────────────────────────────────
+// Kontrak KiPay v1.x: { event, sent_at, transaction: { trx_id, status, ... } }.
+// Atomic idempotency via unique (kipayTrxId, eventType) + DB transaction (P16).
+export interface KipayWebhookInput {
+  event: 'transaction.paid' | 'transaction.expired' | 'webhook.test';
+  sent_at?: string;
+  deliveryId?: string;
+  trxId: string;
+  transaction: {
+    trx_id: string;
+    mode?: string;
+    requested_amount?: number;
+    unique_code?: number;
+    amount?: number;
+    fee_amount?: number;
+    fee_bearer?: string;
+    net_amount?: number;
+    status?: string;
+    provider?: string | null;
+    matched_at?: string | null;
+  };
 }
 
-export async function processXenditPaymentWebhook(payload: XenditPaymentWebhookInput) {
-  const { paymentRequestId, event } = payload;
-
-  // Fast-path: already processed (kind+event+ids unique).
-  const existing = await prisma.xenditWebhook.findFirst({
-    where: { kind: 'PAYMENT', event, paymentRequestId },
+export async function processKipayWebhook(payload: KipayWebhookInput) {
+  const { trxId, event } = payload;
+  // Fast-path: already processed.
+  const existing = await prisma.kipayWebhook.findUnique({
+    where: { kipayTrxId_eventType: { kipayTrxId: trxId, eventType: event } },
   });
   if (existing?.processedAt) return { alreadyProcessed: true };
-
-  // Find payment by Xendit payment_request_id.
+  // Find payment
   const payment = await prisma.payment.findUnique({
-    where: { providerOrderId: paymentRequestId },
+    where: { kipayTrxId: trxId },
     include: { topUpOrder: true },
   });
   if (!payment) {
-    await prisma.xenditWebhook.upsert({
-      where: { kind_event_paymentRequestId_payoutId: { kind: 'PAYMENT', event, paymentRequestId, payoutId: '' } },
-      create: { kind: 'PAYMENT', event, paymentRequestId, referenceId: payload.referenceId, status: payload.status, payload: JSON.stringify(payload), processedAt: new Date() },
+    await prisma.kipayWebhook.upsert({
+      where: { kipayTrxId_eventType: { kipayTrxId: trxId, eventType: event } },
+      create: { kipayTrxId: trxId, eventType: event, payload: JSON.stringify(payload), processedAt: new Date() },
       update: {},
     });
     return { notFound: true };
   }
-
-  // Atomically claim webhook. Unique constraint guarantees duplicates never fulfill twice.
-  let webhookRecord: Awaited<ReturnType<typeof prisma.xenditWebhook.upsert>>;
+  // Atomically claim webhook: insert if absent, or reuse unprocessed record.
+  let webhookRecord: Awaited<ReturnType<typeof prisma.kipayWebhook.upsert>>;
   try {
-    webhookRecord = await prisma.xenditWebhook.upsert({
-      where: { kind_event_paymentRequestId_payoutId: { kind: 'PAYMENT', event, paymentRequestId, payoutId: '' } },
-      create: { kind: 'PAYMENT', event, paymentRequestId, referenceId: payload.referenceId, status: payload.status, paymentId: payment.id, payload: JSON.stringify(payload) },
+    webhookRecord = await prisma.kipayWebhook.upsert({
+      where: { kipayTrxId_eventType: { kipayTrxId: trxId, eventType: event } },
+      create: { kipayTrxId: trxId, paymentId: payment.id, eventType: event, payload: JSON.stringify(payload) },
       update: { paymentId: payment.id },
     });
   } catch (err: unknown) {
-    const raced = await prisma.xenditWebhook.findFirst({
-      where: { kind: 'PAYMENT', event, paymentRequestId },
+    const raced = await prisma.kipayWebhook.findUnique({
+      where: { kipayTrxId_eventType: { kipayTrxId: trxId, eventType: event } },
     });
     if (raced?.processedAt) return { alreadyProcessed: true };
     throw err;
   }
   if (webhookRecord.processedAt) return { alreadyProcessed: true };
-
   const order = payment.topUpOrder;
-
-  // Skip already-processed orders (but still mark webhook processed for consistency).
-  if (!['CREATED', 'PAYMENT_PENDING', 'PAYMENT_CREATE_UNKNOWN', 'PAYMENT_CONFIRMED', 'CRYPTO_PROCESSING'].includes(order.status)) {
-    await prisma.xenditWebhook.update({ where: { id: webhookRecord.id }, data: { processedAt: new Date() } });
+  if (!['CREATED', 'PAYMENT_PENDING', 'PAYMENT_CREATE_UNKNOWN'].includes(order.status)) {
+    await prisma.kipayWebhook.update({ where: { id: webhookRecord.id }, data: { processedAt: new Date() } });
     return { skipped: true };
   }
-
-  // Webhook hanya sinyal — fulfillment via server-to-server GET (single path).
-  const result = await verifyAndFulfillTopUp(order.publicId);
-  await prisma.xenditWebhook.update({ where: { id: webhookRecord.id }, data: { processedAt: new Date() } }).catch(() => {});
-  return result;
+  if (event === 'transaction.paid' || event === 'transaction.expired') {
+    const result = await verifyAndFulfillTopUp(order.publicId);
+    await prisma.kipayWebhook.update({ where: { id: webhookRecord.id }, data: { processedAt: new Date() } }).catch(() => {});
+    return result;
+  }
+  await prisma.kipayWebhook.update({ where: { id: webhookRecord.id }, data: { processedAt: new Date() } });
+  return { processed: true };
 }
 
 /**
- * Verifikasi server-to-server + fulfillment idempoten.
+ * Verifikasi server-to-server + fulfillment idempoten (§13/§20/§21).
  * dipakai webhook, payment-status endpoint, dan reconcile — ketiganya
  * konvergen ke state akhir yang sama apa pun urutan kedatangannya.
- *
- * Xendit flow: SUCCEEDED → PAYMENT_CONFIRMED → processCryptoDelivery()
- * (KORAMP mengirim kripto dari platform wallet). FAILED/CANCELED/EXPIRED
- * → PAYMENT_FAILED.
  */
 export async function verifyAndFulfillTopUp(publicId: string, opts?: { throttleMs?: number }): Promise<
   | { state: 'CONFIRMED' }
@@ -348,33 +329,23 @@ export async function verifyAndFulfillTopUp(publicId: string, opts?: { throttleM
     where: { publicId },
     include: { payment: true },
   });
-  if (!order || !order.payment || !order.payment.providerOrderId) return { state: 'NOT_FOUND' };
+  if (!order || !order.payment || !order.payment.kipayTrxId) return { state: 'NOT_FOUND' };
   const payment = order.payment;
-  const providerOrderId: string = order.payment.providerOrderId;
-
+  const kipayTrxId: string = order.payment.kipayTrxId;
   if (!['CREATED', 'PAYMENT_PENDING', 'PAYMENT_CONFIRMED', 'CRYPTO_PROCESSING'].includes(order.status)) {
     return { state: 'CONVERGED', status: order.status };
   }
-
   // Throttle upstream (§13/§28): layani dari DB bila baru diverifikasi.
   const throttleMs = opts?.throttleMs ?? 15000;
   if (payment.lastVerifiedAt && Date.now() - payment.lastVerifiedAt.getTime() < throttleMs) {
     if (payment.status === 'PAID' || order.status === 'PAYMENT_CONFIRMED') return { state: 'CONFIRMED' };
     return { state: 'PENDING' };
   }
-
-  // Claim the throttle window SEBELUM upstream call yang lambat.
-  // Tanpa ini, poll bersamaan menumpuk request upstream + write SQLite.
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: { lastVerifiedAt: new Date(), providerUpdatedAt: new Date() },
-  }).catch(() => {});
-
-  let verified: Awaited<ReturnType<typeof xenditGetPaymentRequest>>;
+  let verified: KipayTransaction;
   try {
-    verified = await xenditGetPaymentRequest(providerOrderId);
+    verified = await kipayGetTransaction(kipayTrxId);
   } catch (e) {
-    // Upstream tak terjangkau: JANGAN ubah status (§26).
+    // Upstream tak terjangkau / trx hilang: JANGAN ubah status (§26).
     await prisma.payment.update({
       where: { id: payment.id },
       data: { lastVerifiedAt: new Date() },
@@ -383,85 +354,85 @@ export async function verifyAndFulfillTopUp(publicId: string, opts?: { throttleM
   }
   await prisma.payment.update({
     where: { id: payment.id },
-    data: { lastVerifiedAt: new Date(), providerStatus: verified.status, providerUpdatedAt: new Date() },
+    data: { lastVerifiedAt: new Date() },
   }).catch(() => {});
 
-  const decision = decideXenditTopUpTransition(order.status, verified.status);
-
+  const decision = decideTopUpTransition(order.status, verified.status);
   if (decision === 'keep') {
     return { state: 'PENDING' };
   }
   if (decision === 'ignore') {
     return { state: 'CONVERGED', status: order.status };
   }
-
   if (decision === 'expire') {
     await prisma.$transaction(async (tx) => {
       await tx.payment.update({ where: { id: payment.id }, data: { status: 'EXPIRED' } });
       await tx.topUpOrder.update({
         where: { id: order.id },
-        data: {
-          status: 'PAYMENT_FAILED',
-          failureReason: 'Pembayaran gagal/kadaluarsa. Buat order baru.',
-        },
+        data: { status: 'PAYMENT_FAILED', failureReason: 'QRIS expired — buat order baru.' },
       });
     });
     return { state: 'EXPIRED' };
   }
-
-  // decision === 'confirm' (SUCCEEDED): verifikasi penuh SEBELUM fulfill.
-  const localTotalIdr = Math.round(Number(order.totalIdr));
-  const amountCheck = verifyXenditPaymentAmounts(
-    { totalIdr: localTotalIdr, publicId: order.publicId, providerOrderId },
-    {
-      requestAmount: verified.requestAmount,
-      referenceId: verified.referenceId,
-      paymentRequestId: verified.paymentRequestId,
-      currency: verified.currency,
-      channelCode: verified.channelCode,
-    },
-  );
-  if (!amountCheck.ok) {
-    console.error(`[topup] xendit verification failed order=${order.publicId}: ${amountCheck.reason}`);
-    return { state: 'UNKNOWN', reason: amountCheck.reason };
+  // decision === 'confirm': verifikasi penuh SEBELUM fulfill (§41).
+  // 1. Mode cocok (cegah campur sandbox/production §4).
+  const expectedMode = (process.env.KIPAY_MODE ?? 'sandbox').trim();
+  if (verified.mode !== expectedMode) {
+    console.error(`[topup] mode mismatch trx=${payment.kipayTrxId}: upstream=${verified.mode} env=${expectedMode}`);
+    return { state: 'UNKNOWN', reason: 'mode_mismatch' };
   }
-
-  if (decision === 'confirm') {
-    // 3. Transisi atomik guarded (hanya sekali — konvergensi webhook vs polling).
-    const transitioned = await prisma.$transaction(async (tx) => {
-      const current = await tx.topUpOrder.findUnique({ where: { id: order.id }, select: { status: true } });
-      if (!current || !['CREATED', 'PAYMENT_PENDING'].includes(current.status)) return false;
-      await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: 'PAID',
-          paidAt: new Date(),
-          provider: 'xendit',
-          providerStatus: verified.status,
-          providerChannel: verified.channelCode ?? XENDIT_PAYMENT_CHANNEL,
-          providerUpdatedAt: new Date(),
-        },
-      });
-      await tx.topUpOrder.update({ where: { id: order.id }, data: { status: 'PAYMENT_CONFIRMED' } });
-      await tx.auditLog.create({
-        data: {
-          action: 'PAYMENT_CONFIRMED', entity: 'TopUpOrder', entityId: order.id,
-          actor: order.walletAddress,
-          metadata: JSON.stringify({ providerOrderId, status: verified.status }),
-        },
-      });
-      return true;
+  // 2. Amount verification menggunakan data dari KiPay upstream (trusted source).
+  const localRequested = Math.round(Number(payment.requestedAmount));
+  const localUnique = payment.uniqueCode ?? (verified.unique_code ?? 0);
+  const computedGross = verified.fee_bearer === 'user' && verified.fee_amount
+    ? localRequested + localUnique + verified.fee_amount
+    : localRequested + localUnique;
+  if (verified.amount !== computedGross) {
+    console.error(
+      `[topup] amount mismatch trx=${payment.kipayTrxId}: ` +
+      `upstream=${verified.amount} computed=${computedGross} ` +
+      `(requested=${localRequested} unique=${localUnique} fee_bearer=${verified.fee_bearer} fee=${verified.fee_amount})`
+    );
+    return { state: 'UNKNOWN', reason: 'amount_mismatch' };
+  }
+  if (verified.requested_amount !== undefined && verified.requested_amount !== localRequested) {
+    console.error(
+      `[topup] requested_amount mismatch trx=${payment.kipayTrxId}: ` +
+      `upstream=${verified.requested_amount} local=${localRequested}`
+    );
+    return { state: 'UNKNOWN', reason: 'requested_amount_mismatch' };
+  }
+  // 3. Transisi atomik guarded (hanya sekali — konvergensi webhook vs polling).
+  const transitioned = await prisma.$transaction(async (tx) => {
+    const current = await tx.topUpOrder.findUnique({ where: { id: order.id }, select: { status: true } });
+    if (!current || !['CREATED', 'PAYMENT_PENDING'].includes(current.status)) return false;
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'PAID',
+        paidAt: parseKipayTime(verified.matched_at) ?? new Date(),
+        provider: verified.provider,
+        uniqueCode: verified.unique_code ?? undefined,
+        grossAmount: verified.amount,
+        requestedAmount: verified.requested_amount ?? Math.round(Number(payment.requestedAmount)),
+        feeAmount: verified.fee_amount ?? undefined,
+      },
     });
-
-    if (!transitioned) return { state: 'CONVERGED', status: 'PAYMENT_CONFIRMED' };
-    // Xendit hanya menagih fiat — KORAMP mengirim kripto via delivery engine.
-    // Fire-and-forget agar webhook/polling tetap cepat; reconcile memulihkan bila gagal.
-    void processCryptoDelivery(order.id).catch((e) => console.error('[topup] delivery trigger failed:', e));
-    return { state: 'CONFIRMED' };
-  }
-
-  return { state: 'CONVERGED', status: order.status };
+    await tx.topUpOrder.update({ where: { id: order.id }, data: { status: 'PAYMENT_CONFIRMED' } });
+    await tx.auditLog.create({
+      data: {
+        action: 'PAYMENT_CONFIRMED', entity: 'TopUpOrder', entityId: order.id,
+        actor: order.walletAddress,
+        metadata: JSON.stringify({ kipayTrxId: payment.kipayTrxId, amount: verified.amount }),
+      },
+    });
+    return true;
+  });
+  if (!transitioned) return { state: 'CONVERGED', status: 'PAYMENT_CONFIRMED' };
+  void processCryptoDelivery(order.id).catch((e) => console.error('[topup] delivery trigger failed:', e));
+  return { state: 'CONFIRMED' };
 }
+
 
 // ─── CRYPTO DELIVERY (double-send safe, P13) ──────────────────────────────────
 // Explicit states: PENDING → BROADCASTED → CONFIRMING → CONFIRMED / FAILED / UNKNOWN.
@@ -516,10 +487,10 @@ async function waitForConfirmation(
 export async function processCryptoDelivery(topUpOrderId: string) {
   const order = await prisma.topUpOrder.findUnique({
     where: { id: topUpOrderId },
-    include: { withdrawal: true, payment: { select: { provider: true } } },
+    include: { withdrawal: true },
   });
   if (!order) return;
-  // Xendit collects fiat only — KORAMP always delivers crypto for new orders.
+  // KiPay/Xendit collects fiat only — KORAMP always delivers crypto for new orders.
   // Idempotency: already completed/failed terminal states are not re-processed
   // except CRYPTO_PROCESSING which is resumable by cron (P14).
   if (!['PAYMENT_CONFIRMED', 'CRYPTO_PROCESSING'].includes(order.status)) return;
