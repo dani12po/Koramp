@@ -780,7 +780,18 @@ export function SwapWidget() {
                     <ToolChip state="running">Menunggu pembayaran...</ToolChip>
                   </div>
                   <QrFrame waiting={!qrError} confirmed={false} caption="QRIS payment">
-                    {!qrError && payment.qrPayload ? (
+                    {!qrError && payment.kipayTrxId ? (
+                      // KiPay v1.2.0: QR fetched via proxy (API key never leaves server)
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/payments/qr/${encodeURIComponent(payment.kipayTrxId)}`}
+                        alt="QR Code QRIS"
+                        width={240}
+                        height={240}
+                        className="w-60 h-60 object-contain rounded-xl"
+                        onError={() => setQrError(true)}
+                      />
+                    ) : !qrError && payment.qrPayload ? (
                       <QrCodeCanvas payload={payment.qrPayload} />
                     ) : !qrError && payment.payUrl ? (
                       <div className="w-60 min-h-60 flex flex-col items-center justify-center gap-3 text-gray-300 p-6 text-center">
