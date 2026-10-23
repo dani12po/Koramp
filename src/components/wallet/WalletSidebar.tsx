@@ -213,12 +213,20 @@ export function WalletSidebar({ open, onClose }: Props) {
 
   // Remember live provider addresses as associations (never deletes others).
   // Selection state refreshes reactively via useWalletSelection.
+  // Flush order: rememberWallet THEN refreshWallets so the sidebar never
+  // flashes an empty list when a fresh connection opens it.
   useEffect(() => {
-    if (liveEvm) rememberWallet(liveEvm, 'EVM', evmWalletName ?? undefined);
+    if (liveEvm) {
+      rememberWallet(liveEvm, 'EVM', evmWalletName ?? undefined);
+      refreshWallets();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveEvm]);
   useEffect(() => {
-    if (liveSol) rememberWallet(liveSol, 'SOLANA', solWalletName ?? undefined);
+    if (liveSol) {
+      rememberWallet(liveSol, 'SOLANA', solWalletName ?? undefined);
+      refreshWallets();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveSol]);
   useEffect(() => {
@@ -462,7 +470,16 @@ export function WalletSidebar({ open, onClose }: Props) {
                 {/* ── Connected wallets, grouped per ecosystem ───── */}
                 <section>
                   <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Connected Wallets</p>
-                  {associations.length === 0 && (
+                  {/* Loading skeleton: wallet connected but associations not yet loaded */}
+                  {associations.length === 0 && (liveEvm || liveSol) && (
+                    <div className="space-y-2">
+                      <div className="bg-surface-1 border border-line-subtle rounded-xl p-3 animate-pulse">
+                        <div className="h-4 bg-surface-2 rounded w-32 mb-2" />
+                        <div className="h-3 bg-surface-2 rounded w-20" />
+                      </div>
+                    </div>
+                  )}
+                  {associations.length === 0 && !liveEvm && !liveSol && (
                     <p className="text-gray-600 text-sm">Belum ada wallet. Tambahkan wallet pertama Anda di bawah.</p>
                   )}
                   {(['EVM', 'SOLANA'] as const).map((eco) => {
@@ -543,18 +560,21 @@ export function WalletSidebar({ open, onClose }: Props) {
                   })}
 
                   {/* ── Add wallet (additive, never disconnects) ── */}
-                  {addingEcosystem === null ? (
-                    <button
-                      onClick={() => setAddingEcosystem('EVM')}
-                      className="mt-2 w-full py-2.5 rounded-xl border border-dashed border-line-strong text-gray-400 hover:text-white hover:border-brand-500/50 text-sm font-semibold flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" /> Add Wallet
-                    </button>
-                  ) : (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button onClick={() => handleAdd('EVM')} className="btn-secondary text-sm py-2.5">EVM Wallet</button>
-                      <button onClick={() => handleAdd('SOLANA')} className="btn-secondary text-sm py-2.5">Solana Wallet</button>
-                    </div>
+                  {/* Only show Add Wallet when associations are loaded or no wallet connected */}
+                  {(associations.length > 0 || (!liveEvm && !liveSol)) && (
+                    addingEcosystem === null ? (
+                      <button
+                        onClick={() => setAddingEcosystem('EVM')}
+                        className="mt-2 w-full py-2.5 rounded-xl border border-dashed border-line-strong text-gray-400 hover:text-white hover:border-brand-500/50 text-sm font-semibold flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" /> Add Wallet
+                      </button>
+                    ) : (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <button onClick={() => handleAdd('EVM')} className="btn-secondary text-sm py-2.5">EVM Wallet</button>
+                        <button onClick={() => handleAdd('SOLANA')} className="btn-secondary text-sm py-2.5">Solana Wallet</button>
+                      </div>
+                    )
                   )}
                 </section>
 
