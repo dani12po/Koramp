@@ -252,7 +252,6 @@ export default function AdminLoginPage() {
           Admin Access Key + kode authenticator.
              Tidak ada email, password, atau role hierarchy.
           <br />
-          <span className="text-gray-700">Kehilangan key? Generate dari server: <span className="font-mono">npm run admin:setup</span></span>
         </p>
       </div>
     </div>

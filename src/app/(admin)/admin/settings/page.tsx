@@ -308,7 +308,6 @@ export default function AdminSettingsPage() {
               <p className="text-gray-500 text-sm">Status key tidak tersedia.</p>
             )}
             <p className="text-gray-600 text-xs pt-1 border-t border-line">
-              Kehilangan key &amp; terkunci? Generate dari server: <span className="font-mono text-gray-400">npm run admin:setup</span>
             </p>
           </div>
         </section>
