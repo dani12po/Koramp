@@ -156,6 +156,13 @@ model SellOrder {
   payoutBankName        String?
   payoutAccountNumber   String?
   payoutAccountName     String?
+  // FYAS e-wallet payout fields
+  payoutMethod          String?   // BANK | EWALLET
+  payoutEwalletBrand    String?   // GOPAY | OVO | SHOPEEPAY | DANA
+  payoutEwalletPhone    String?   // phone number for e-wallet target
+  fyasRefId             String?   @unique
+  fyasStatus            String?   // PENDING | PROCESSING | SUCCESS | FAILED | REFUNDED
+  fyasNominal           Int?      // nominal face value credited to user
   status                String    @default("CREATED")
   failureReason         String?
   cryptoTxHash          String?
@@ -253,6 +260,20 @@ model KipayWebhook {
 
   @@unique([kipayTrxId, eventType])
   @@index([kipayTrxId])
+}
+
+model FyasWebhook {
+  // FYAS e-wallet payout webhook idempotency store.
+  id          String    @id @default(uuid())
+  sellOrderId String?
+  refId       String    // FYAS transaction refId
+  event       String    // transaction.success | transaction.failed | webhook.test
+  payload     String    // raw JSON
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([refId, event])
+  @@index([refId])
 }
 
 // ─── CRYPTO ───────────────────────────────────────────────────────────────────

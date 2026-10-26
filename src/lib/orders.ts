@@ -11,6 +11,13 @@ import {
   isXenditPayoutSuccess,
   isXenditPayoutFailed,
 } from './xendit';
+import {
+  fyasGetProducts,
+  findBestProduct,
+  fyasCreateTransaction,
+  fyasGetTransaction,
+  FyasError,
+} from './fyas';
 import { generatePublicId, generateOrderNumber } from './id';
 import { AppError, ValidationError } from './errors';
 
@@ -165,9 +172,12 @@ export async function createSellOrder(opts: {
   quoteId: string;
   asset: AssetSymbol;
   network: NetworkId;
-  bankName: string;
-  accountNumber: string;
-  accountName: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountName?: string;
+  payoutMethod?: 'BANK' | 'EWALLET';
+  payoutEwalletBrand?: string;
+  payoutEwalletPhone?: string;
 }) {
   validateAssetNetwork(opts.asset, opts.network);
 
@@ -177,7 +187,30 @@ export async function createSellOrder(opts: {
     throw new ValidationError(`Alamat wallet tidak valid untuk jaringan ${opts.network}`);
   }
 
+  const payoutMethod = opts.payoutMethod ?? 'BANK';
+
+  // For EWALLET payouts: pre-validate that a suitable product exists before creating the order
+  if (payoutMethod === 'EWALLET') {
+    if (!opts.payoutEwalletBrand || !opts.payoutEwalletPhone) {
+      throw new ValidationError('Brand dan nomor telepon e-wallet wajib diisi untuk payout e-wallet');
+    }
+  }
+
   const quote = await validateAndUseQuote(opts.quoteId, 'SELL');
+
+  // For EWALLET: check product availability after quote is locked (uses quote.totalIdr as target)
+  if (payoutMethod === 'EWALLET') {
+    const products = await fyasGetProducts(opts.payoutEwalletBrand!);
+    const targetIdr = new Decimal(quote.totalIdr.toString()).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+    const best = findBestProduct(products, targetIdr);
+    if (!best) {
+      throw new ValidationError(
+        `Nominal terlalu kecil untuk payout e-wallet brand ini`,
+        422,
+      );
+    }
+  }
+
   const orderNumber = generateOrderNumber();
   const publicId = generatePublicId('kms');
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
@@ -211,9 +244,12 @@ export async function createSellOrder(opts: {
         tax: quote.tax,
         totalIdrPayout: quote.totalIdr,
         depositAddress,
-        payoutBankName: opts.bankName,
-        payoutAccountNumber: opts.accountNumber,
-        payoutAccountName: opts.accountName,
+        payoutBankName: opts.bankName ?? null,
+        payoutAccountNumber: opts.accountNumber ?? null,
+        payoutAccountName: opts.accountName ?? null,
+        payoutMethod,
+        payoutEwalletBrand: opts.payoutEwalletBrand ?? null,
+        payoutEwalletPhone: opts.payoutEwalletPhone ?? null,
         status: 'AWAITING_CRYPTO',
         requiredConfirmations: requiredConfirmations(quote.assetSymbol),
         expiresAt,
@@ -655,6 +691,12 @@ export async function processSellPayout(sellOrderId: string) {
   const order = await prisma.sellOrder.findUnique({ where: { id: sellOrderId } });
   if (!order || order.status !== 'CRYPTO_CONFIRMED') return;
 
+  // Branch: EWALLET orders go to FYAS; BANK orders go to Xendit (unchanged).
+  if (order.payoutMethod === 'EWALLET') {
+    await processFyasPayout(order.id);
+    return;
+  }
+
   await prisma.sellOrder.update({ where: { id: sellOrderId }, data: { status: 'PAYOUT_PROCESSING' } });
 
   try {
@@ -861,7 +903,7 @@ export async function processXenditPayoutWebhook(payload: { event: string; payou
 
 /**
  * Mark payout as completed and order as COMPLETED.
- * Called by: Xendit SUCCEEDED status, payout webhook, admin confirm-payout endpoint.
+ * Called by: Xendit SUCCEEDED status, payout webhook, admin confirm-payout endpoint, FYAS SUCCESS.
  */
 export async function completeSellPayout(sellOrderId: string, providerRef?: string) {
   await prisma.$transaction(async (tx) => {
@@ -888,4 +930,230 @@ export async function completeSellPayout(sellOrderId: string, providerRef?: stri
       },
     });
   }, { timeout: 15000 });
+}
+
+// ─── FYAS E-WALLET PAYOUT ─────────────────────────────────────────────────────
+
+/**
+ * Process an e-wallet payout via FYAS for a CRYPTO_CONFIRMED sell order.
+ * Called by processSellPayout when order.payoutMethod === 'EWALLET'.
+ */
+export async function processFyasPayout(sellOrderId: string): Promise<void> {
+  const order = await prisma.sellOrder.findUnique({ where: { id: sellOrderId } });
+  if (!order) return;
+
+  // Guard: only process CRYPTO_CONFIRMED orders
+  if (order.status !== 'CRYPTO_CONFIRMED') return;
+
+  await prisma.sellOrder.update({ where: { id: sellOrderId }, data: { status: 'PAYOUT_PROCESSING' } });
+
+  try {
+    if (!order.payoutEwalletBrand || !order.payoutEwalletPhone) {
+      throw new Error('Missing e-wallet brand or phone number on sell order');
+    }
+
+    const targetIdr = new Decimal(order.totalIdrPayout.toString()).toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+
+    // Find best product matching the payout amount
+    const products = await fyasGetProducts(order.payoutEwalletBrand);
+    const best = findBestProduct(products, targetIdr);
+
+    if (!best) {
+      const reason = `Nominal ${targetIdr} terlalu kecil untuk payout e-wallet ${order.payoutEwalletBrand}`;
+      await prisma.$transaction(async (tx) => {
+        await tx.sellOrder.update({
+          where: { id: sellOrderId },
+          data: { status: 'PAYOUT_FAILED', failureReason: reason, fyasStatus: 'FAILED' },
+        });
+        await tx.auditLog.create({
+          data: {
+            action: 'PAYOUT_FAILED',
+            entity: 'SellOrder',
+            entityId: sellOrderId,
+            actor: 'system',
+            metadata: JSON.stringify({ provider: 'fyas', reason }),
+          },
+        });
+      }, { timeout: 15000 });
+      return;
+    }
+
+    // Create FYAS transaction (idempotent via publicId as idempotency key)
+    const tx = await fyasCreateTransaction({
+      brand: order.payoutEwalletBrand,
+      nominal: best.nominal,
+      targetNumber: order.payoutEwalletPhone,
+      idempotencyKey: order.publicId,
+    });
+
+    // Persist FYAS transaction reference
+    await prisma.sellOrder.update({
+      where: { id: sellOrderId },
+      data: {
+        fyasRefId: tx.refId,
+        fyasStatus: tx.status,
+        fyasNominal: tx.nominal,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'FYAS_PAYOUT_INITIATED',
+        entity: 'SellOrder',
+        entityId: sellOrderId,
+        actor: 'system',
+        metadata: JSON.stringify({
+          provider: 'fyas',
+          refId: tx.refId,
+          brand: order.payoutEwalletBrand,
+          nominal: tx.nominal,
+          status: tx.status,
+        }),
+      },
+    });
+
+    // Immediate terminal resolution if FYAS responded with SUCCESS
+    if (tx.status === 'SUCCESS') {
+      await completeSellPayout(sellOrderId, tx.refId);
+      return;
+    }
+
+    // Terminal failure states
+    if (tx.status === 'FAILED' || tx.status === 'REFUNDED') {
+      const reason = `FYAS transaction ${tx.status}: ${tx.refId}`;
+      await prisma.sellOrder.update({
+        where: { id: sellOrderId },
+        data: { status: 'PAYOUT_FAILED', failureReason: reason, fyasStatus: tx.status },
+      });
+      return;
+    }
+
+    // PENDING/PROCESSING — webhook will converge state
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const isFyasError = err instanceof FyasError;
+    console.error('[processFyasPayout] error:', message);
+    await prisma.$transaction(async (tx) => {
+      await tx.sellOrder.update({
+        where: { id: sellOrderId },
+        data: {
+          status: 'PAYOUT_FAILED',
+          failureReason: message,
+          fyasStatus: isFyasError ? 'FAILED' : undefined,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          action: 'PAYOUT_FAILED',
+          entity: 'SellOrder',
+          entityId: sellOrderId,
+          actor: 'system',
+          metadata: JSON.stringify({ provider: 'fyas', error: message }),
+        },
+      });
+    }, { timeout: 15000 });
+  }
+}
+
+/**
+ * Process a FYAS webhook event.
+ * Idempotent via FyasWebhook upsert on [refId, event].
+ * Called by POST /api/webhooks/fyas.
+ */
+export async function processFyasPayoutWebhook(payload: {
+  id?: string;
+  event: string;
+  data: {
+    refId: string;
+    status?: string;
+    [key: string]: unknown;
+  };
+}): Promise<{ alreadyProcessed?: boolean; notFound?: boolean; processed?: boolean; skipped?: boolean }> {
+  const { event, data } = payload;
+  const refId = data?.refId;
+
+  if (!refId) return { notFound: true };
+
+  // Idempotency via FyasWebhook upsert
+  let webhookRecord: { id: string; processedAt: Date | null };
+  try {
+    webhookRecord = await prisma.fyasWebhook.upsert({
+      where: { refId_event: { refId, event } },
+      create: { refId, event, payload: JSON.stringify(payload) },
+      update: {},
+    });
+  } catch {
+    const raced = await prisma.fyasWebhook.findUnique({
+      where: { refId_event: { refId, event } },
+    });
+    if (raced?.processedAt) return { alreadyProcessed: true };
+    throw new Error('fyas webhook race');
+  }
+
+  if (webhookRecord.processedAt) return { alreadyProcessed: true };
+
+  // Find the sell order by FYAS refId
+  const order = await prisma.sellOrder.findUnique({ where: { fyasRefId: refId } });
+
+  if (!order) {
+    await prisma.fyasWebhook.update({
+      where: { id: webhookRecord.id },
+      data: { processedAt: new Date() },
+    });
+    return { notFound: true };
+  }
+
+  // Update webhook record with sellOrderId
+  await prisma.fyasWebhook.update({
+    where: { id: webhookRecord.id },
+    data: { sellOrderId: order.id },
+  }).catch(() => {});
+
+  // Only process orders in payout states
+  if (!['PAYOUT_PROCESSING', 'CRYPTO_CONFIRMED'].includes(order.status)) {
+    await prisma.fyasWebhook.update({ where: { id: webhookRecord.id }, data: { processedAt: new Date() } });
+    return { skipped: true };
+  }
+
+  // Server-side verification: fetch latest transaction status from FYAS
+  let txStatus = data.status as string | undefined;
+  try {
+    const latest = await fyasGetTransaction(refId);
+    txStatus = latest.status;
+    // Persist latest status
+    await prisma.sellOrder.update({
+      where: { id: order.id },
+      data: { fyasStatus: latest.status, fyasNominal: latest.nominal ?? undefined },
+    }).catch(() => {});
+  } catch {
+    // Upstream unavailable — use webhook status as-is
+  }
+
+  if (event === 'transaction.success' || txStatus === 'SUCCESS') {
+    await completeSellPayout(order.id, refId);
+  } else if (event === 'transaction.failed' || txStatus === 'FAILED' || txStatus === 'REFUNDED') {
+    const reason = `FYAS transaction ${txStatus ?? 'FAILED'}: ${refId}`;
+    await prisma.$transaction(async (tx) => {
+      await tx.sellOrder.update({
+        where: { id: order.id },
+        data: { status: 'PAYOUT_FAILED', failureReason: reason, fyasStatus: 'REFUNDED' },
+      });
+      await tx.auditLog.create({
+        data: {
+          action: 'PAYOUT_FAILED',
+          entity: 'SellOrder',
+          entityId: order.id,
+          actor: 'system',
+          metadata: JSON.stringify({ provider: 'fyas', refId, event, status: txStatus }),
+        },
+      });
+    }, { timeout: 15000 });
+  }
+
+  await prisma.fyasWebhook.update({
+    where: { id: webhookRecord.id },
+    data: { processedAt: new Date() },
+  }).catch(() => {});
+
+  return { processed: true };
 }
