@@ -904,8 +904,10 @@ export async function processXenditPayoutWebhook(payload: { event: string; payou
 /**
  * Mark payout as completed and order as COMPLETED.
  * Called by: Xendit SUCCEEDED status, payout webhook, admin confirm-payout endpoint, FYAS SUCCESS.
+ *
+ * @param provider - The payment provider ('xendit' | 'fyas'). Defaults to 'xendit' for backward compat.
  */
-export async function completeSellPayout(sellOrderId: string, providerRef?: string) {
+export async function completeSellPayout(sellOrderId: string, providerRef?: string, provider: 'xendit' | 'fyas' = 'xendit') {
   await prisma.$transaction(async (tx) => {
     await tx.payout.updateMany({
       where: { sellOrderId },
@@ -926,7 +928,7 @@ export async function completeSellPayout(sellOrderId: string, providerRef?: stri
         entity: 'SellOrder',
         entityId: sellOrderId,
         actor: 'system',
-        metadata: JSON.stringify({ provider: 'xendit', providerRef }),
+        metadata: JSON.stringify({ provider, providerRef }),
       },
     });
   }, { timeout: 15000 });
@@ -978,6 +980,23 @@ export async function processFyasPayout(sellOrderId: string): Promise<void> {
       return;
     }
 
+    // Create/upsert a Payout row so admin reconciliation can track FYAS disbursements.
+    // status PROCESSING mirrors what processSellPayout (Xendit path) does.
+    await prisma.payout.upsert({
+      where: { sellOrderId: order.id },
+      create: {
+        sellOrderId: order.id,
+        bankName: '',
+        accountNumber: order.payoutEwalletPhone,
+        accountName: order.payoutEwalletBrand,
+        amount: order.totalIdrPayout,
+        status: 'PROCESSING',
+        providerRef: order.publicId,
+        idempotencyKey: order.publicId,
+      },
+      update: { status: 'PROCESSING', providerRef: order.publicId, idempotencyKey: order.publicId },
+    });
+
     // Create FYAS transaction (idempotent via publicId as idempotency key)
     const tx = await fyasCreateTransaction({
       brand: order.payoutEwalletBrand,
@@ -1014,7 +1033,7 @@ export async function processFyasPayout(sellOrderId: string): Promise<void> {
 
     // Immediate terminal resolution if FYAS responded with SUCCESS
     if (tx.status === 'SUCCESS') {
-      await completeSellPayout(sellOrderId, tx.refId);
+      await completeSellPayout(sellOrderId, tx.refId, 'fyas');
       return;
     }
 
@@ -1130,7 +1149,7 @@ export async function processFyasPayoutWebhook(payload: {
   }
 
   if (event === 'transaction.success' || txStatus === 'SUCCESS') {
-    await completeSellPayout(order.id, refId);
+    await completeSellPayout(order.id, refId, 'fyas');
   } else if (event === 'transaction.failed' || txStatus === 'FAILED' || txStatus === 'REFUNDED') {
     const reason = `FYAS transaction ${txStatus ?? 'FAILED'}: ${refId}`;
     await prisma.$transaction(async (tx) => {

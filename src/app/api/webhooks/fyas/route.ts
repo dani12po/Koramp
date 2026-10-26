@@ -42,9 +42,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (sigResult === 'no_secret') {
+      // In production, missing secret is a security misconfiguration — reject the request.
+      if (process.env.NODE_ENV === 'production') {
+        console.error(JSON.stringify({
+          scope: 'fyas', operation: 'webhook',
+          errorCategory: 'SECRET_NOT_CONFIGURED',
+          warning: 'FYAS_WEBHOOK_SECRET not set in production — rejecting request',
+        }));
+        return ok({ received: false, error: 'Webhook secret not configured' });
+      }
       console.warn(JSON.stringify({
         scope: 'fyas', operation: 'webhook',
-        warning: 'FYAS_WEBHOOK_SECRET not set — signature verification skipped',
+        warning: 'FYAS_WEBHOOK_SECRET not set — signature verification skipped (non-production only)',
       }));
     }
 
