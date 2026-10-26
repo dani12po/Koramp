@@ -81,6 +81,11 @@ export function SwapWidget() {
   const [accountNumber, setAccountNumber] = useState('');
   const [accountName, setAccountName] = useState('');
 
+  // Payout method for SELL flow
+  const [payoutMethod, setPayoutMethod] = useState<'BANK' | 'EWALLET'>('BANK');
+  const [ewalletBrand, setEwalletBrand] = useState<'GOPAY' | 'OVO' | 'SHOPEEPAY' | 'DANA' | ''>('');
+  const [ewalletPhone, setEwalletPhone] = useState('');
+
   const [order, setOrder] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -301,8 +306,12 @@ export function SwapWidget() {
   // ─── Create order (same contracts as the classic checkout) ─────────────────
   const createOrder = async () => {
     if (!quote || !resolvedAddress) return;
-    if (!isBuy && (!bankName || !accountNumber || !accountName || accountNumber.length < 8)) {
+    if (!isBuy && payoutMethod === 'BANK' && (!bankName || !accountNumber || !accountName || accountNumber.length < 8)) {
       toast.error('Lengkapi data rekening bank');
+      return;
+    }
+    if (!isBuy && payoutMethod === 'EWALLET' && (!ewalletBrand || !ewalletPhone)) {
+      toast.error('Lengkapi data e-wallet');
       return;
     }
     setSubmitting(true);
@@ -316,9 +325,15 @@ export function SwapWidget() {
         network: meta.networkId,
       };
       if (!isBuy) {
-        body.bankName = bankName;
-        body.accountNumber = accountNumber;
-        body.accountName = accountName;
+        body.payoutMethod = payoutMethod;
+        if (payoutMethod === 'BANK') {
+          body.bankName = bankName;
+          body.accountNumber = accountNumber;
+          body.accountName = accountName;
+        } else {
+          body.payoutEwalletBrand = ewalletBrand;
+          body.payoutEwalletPhone = ewalletPhone;
+        }
       }
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
@@ -475,6 +490,9 @@ export function SwapWidget() {
     setDepositConfs(null);
     setCryptoConfirmed(false);
     setCryptoTxHash(null);
+    setPayoutMethod('BANK');
+    setEwalletBrand('');
+    setEwalletPhone('');
   };
 
   const payLabel = payIsIdr ? 'Indonesian Rupiah' : info.network;
@@ -692,36 +710,109 @@ export function SwapWidget() {
             <motion.div key="bank" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.22 }} className="space-y-4">
               <button onClick={() => setStage('quote')} className="text-gray-500 hover:text-white text-sm">← Kembali</button>
               <p className="text-[#F5F5F5] font-semibold text-[15px]">Rekening penerima IDR</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {POPULAR_BANKS.map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBankName(b)}
-                    aria-pressed={bankName === b}
-                    className={clsx('h-12 px-2 rounded-xl text-xs font-semibold border transition-all',
-                      bankName === b ? 'bank-selected' : 'bank-idle bg-[#141416] border-[#232326] text-[#8B8B93]')}
-                  >
-                    {b}
-                  </button>
-                ))}
+
+              {/* Payout method toggle */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayoutMethod('BANK');
+                    setEwalletBrand('');
+                    setEwalletPhone('');
+                  }}
+                  aria-pressed={payoutMethod === 'BANK'}
+                  className={clsx('h-11 px-3 rounded-xl text-sm font-semibold border transition-all',
+                    payoutMethod === 'BANK' ? 'bank-selected' : 'bank-idle bg-[#141416] border-[#232326] text-[#8B8B93]')}
+                >
+                  Transfer Bank
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPayoutMethod('EWALLET');
+                    setBankName('');
+                    setAccountNumber('');
+                    setAccountName('');
+                  }}
+                  aria-pressed={payoutMethod === 'EWALLET'}
+                  className={clsx('h-11 px-3 rounded-xl text-sm font-semibold border transition-all',
+                    payoutMethod === 'EWALLET' ? 'bank-selected' : 'bank-idle bg-[#141416] border-[#232326] text-[#8B8B93]')}
+                >
+                  E-Wallet
+                </button>
               </div>
-              <div>
-                <label className="label" htmlFor="swap-acct">Nomor rekening</label>
-                <input id="swap-acct" inputMode="numeric" className="input-field font-mono text-sm" placeholder="Contoh: 1234567890"
-                  value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 20))} />
-                {accountNumber.length > 0 && accountNumber.length < 8 && (
-                  <p className="text-[#EF4444] text-xs mt-1.5" role="alert">Nomor rekening minimal 8 digit.</p>
-                )}
-              </div>
-              <div>
-                <label className="label" htmlFor="swap-name">Nama pemilik rekening</label>
-                <input id="swap-name" className="input-field text-sm" placeholder="Contoh: Budi Santoso"
-                  value={accountName} onChange={(e) => setAccountName(e.target.value)} />
-              </div>
+
+              {payoutMethod === 'BANK' && (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {POPULAR_BANKS.map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setBankName(b)}
+                        aria-pressed={bankName === b}
+                        className={clsx('h-12 px-2 rounded-xl text-xs font-semibold border transition-all',
+                          bankName === b ? 'bank-selected' : 'bank-idle bg-[#141416] border-[#232326] text-[#8B8B93]')}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="swap-acct">Nomor rekening</label>
+                    <input id="swap-acct" inputMode="numeric" className="input-field font-mono text-sm" placeholder="Contoh: 1234567890"
+                      value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 20))} />
+                    {accountNumber.length > 0 && accountNumber.length < 8 && (
+                      <p className="text-[#EF4444] text-xs mt-1.5" role="alert">Nomor rekening minimal 8 digit.</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="swap-name">Nama pemilik rekening</label>
+                    <input id="swap-name" className="input-field text-sm" placeholder="Contoh: Budi Santoso"
+                      value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+                  </div>
+                </>
+              )}
+
+              {payoutMethod === 'EWALLET' && (
+                <div className="space-y-4">
+                  <p className="text-gray-400 text-sm">Pilih e-wallet penerima</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['GOPAY', 'OVO', 'SHOPEEPAY', 'DANA'] as const).map((b) => (
+                      <button
+                        key={b}
+                        type="button"
+                        onClick={() => setEwalletBrand(b)}
+                        aria-pressed={ewalletBrand === b}
+                        className={clsx('h-12 px-2 rounded-xl text-xs font-semibold border transition-all',
+                          ewalletBrand === b ? 'bank-selected' : 'bank-idle bg-[#141416] border-[#232326] text-[#8B8B93]')}
+                      >
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="label" htmlFor="swap-ewallet-phone">Nomor e-wallet</label>
+                    <input
+                      id="swap-ewallet-phone"
+                      inputMode="numeric"
+                      className="input-field font-mono text-sm"
+                      placeholder="Contoh: 081234567890"
+                      value={ewalletPhone}
+                      onChange={(e) => setEwalletPhone(e.target.value.replace(/\D/g, '').slice(0, 15))}
+                    />
+                    {ewalletPhone.length > 0 && ewalletPhone.length < 10 && (
+                      <p className="text-[#EF4444] text-xs mt-1.5" role="alert">Nomor minimal 10 digit.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={() => setStage('confirm')}
-                disabled={!bankName || !accountNumber || !accountName || accountNumber.length < 8}
+                disabled={payoutMethod === 'BANK'
+                  ? (!bankName || !accountNumber || !accountName || accountNumber.length < 8)
+                  : (!ewalletBrand || !ewalletPhone || ewalletPhone.length < 10)}
                 className="btn-primary w-full bg-green-600 hover:bg-green-500"
               >
                 Review & Konfirmasi →
@@ -743,7 +834,11 @@ export function SwapWidget() {
                   {isBuy ? 'Crypto dikirim ke wallet Anda' : 'IDR dikirim ke rekening Anda'}
                 </p>
                 <p className="text-white font-mono text-sm break-all">
-                  {isBuy ? resolvedAddress : `${bankName} · ****${accountNumber.slice(-4)} · ${accountName}`}
+                  {isBuy
+                    ? resolvedAddress
+                    : payoutMethod === 'EWALLET'
+                      ? `${ewalletBrand} · ${ewalletPhone}`
+                      : `${bankName} · ****${accountNumber.slice(-4)} · ${accountName}`}
                 </p>
               </div>
               <button
